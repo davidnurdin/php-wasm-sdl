@@ -1,0 +1,93 @@
+<html>
+<body>
+<canvas id="canvas" width="1000" height="1000" style="display: block; background: #111;"></canvas>
+
+
+<textarea id="php">
+
+	function sdl_frame($renderer)
+	{
+
+	$start = hrtime(true);
+
+		$GLOBALS['count']++ ;
+
+
+		SDL_SetRenderDrawColor($renderer, rand(1,255), 255, 0, 255);
+		SDL_RenderClear($renderer);
+		SDL_RenderPresent($renderer);
+
+	if (rand(1,100) == 5)
+		var_dump($GLOBALS['count']);
+
+	$end = hrtime(true);
+	// var_dump ("Frame time: " . ($end - $start)/1e6 . "ms\n");
+
+}
+
+
+
+	SDL_Init(SDL_INIT_VIDEO);
+	$GLOBALS['count'] = 0;
+
+$window = SDL_CreateWindow(
+	"PHP SDL2 in WebAssembly",
+	0, 0,
+	500, 500,
+	SDL_WINDOW_SHOWN
+);
+
+
+if (!$window) {
+	echo "Erreur SDL_CreateWindow : " . SDL_GetError() . "\n";
+	exit(1);
+}
+	$renderer = SDL_CreateRenderer($window, -1, SDL_RENDERER_ACCELERATED);
+	// sdl_frame($renderer);
+//	var_dump($renderer);
+//	return "ok2" ;
+
+
+</textarea>
+
+<script type="module">
+	import phpBinary from "./php-web.mjs";
+	async function main() {
+		const output = document.getElementById('output')
+		const buffer = [];
+		const canvas = document.getElementById("canvas");
+
+		const { ccall, FS } = await phpBinary({
+			canvas: document.getElementById('canvas'),
+			print(data) {
+				console.log(data);
+
+			//	buffer.push(data);
+			}
+		});
+
+//alert(document.getElementById('php').value);
+
+		ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
+
+		return "ok" ;
+
+		// console.log(ccall("phpw_exec", "string", ["string"], ["return 2 ;"]));
+
+		// window.FS = FS;
+		// window.run = () => {
+		// 	// Note that `/src` is the path we used when preloading!
+		// 	//ccall("phpw", null, ["string"], ["/src/index.php"]);
+		// 	//output.contentWindow.document.body.innerHTML = buffer.join('');
+		// 	// buffer.length = 0;
+		// }
+		//
+		// run();
+	}
+
+	await main();
+</script>
+
+
+</body>
+</html>

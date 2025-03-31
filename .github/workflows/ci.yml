@@ -1,0 +1,21 @@
+name: Build Docker image
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: soyuka/php-wasm:latest
+          cache-from: type=registry,ref=soyuka/php-wasm:latest
+          cache-to: type=inline
