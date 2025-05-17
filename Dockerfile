@@ -54,7 +54,20 @@ RUN git clone https://github.com/Ponup/php-sdl.git /tmp/php-sdl && \
 	cp -r /src/php-src/ext/sdl/src/* /src/php-src/ext/sdl/ && \
     find /src/php-src/ext/sdl/ -type f ! \( -name '*.c' -o -name '*.h' -o -name 'config.m4' \) -delete
 
+
+RUN git clone https://github.com/kea/php-sdl-image.git && \
+    mkdir -p /src/php-src/ext/sdl_image && \
+	cp -r php-sdl-image/* /src/php-src/ext/sdl_image
+
+# todo voir
+#RUN #git clone https://github.com/krakjoe/parallel.git /tmp/php-parallel && \
+#    mkdir -p /src/php-src/ext/parallel && \
+#    cp -r /tmp/php-parallel/* /src/php-src/ext/parallel && \
+#	cp -r /src/php-src/ext/parallel/src/* /src/php-src/ext/sdl/ && \
+#    find /src/php-src/ext/sdl/ -type f ! \( -name '*.c' -o -name '*.h' -o -name 'config.m4' \) -delete
+
 COPY config.sdl /src/php-src/ext/sdl/config.m4
+COPY config-image.sdl /src/php-src/ext/sdl_image/config.m4
 
 
 
@@ -65,7 +78,8 @@ ARG EXPORT_NAME=createPhpModule
 ARG MODULARIZE=1
 ARG EXPORT_ES6=1
 ARG ASSERTIONS=0
-ARG OPTIMIZE=-O3
+ARG OPTIMIZE=-O1
+# optimise mieux mais enleve le preload du js (enleve les commentaire sur lequel on se base pr rajouté l'ajout du js) ARG OPTIMIZE=-O3
 # TODO: find a way to keep this, it can't be empty if defined...
 # ARG PRE_JS=
 ARG INITIAL_MEMORY=256mb
@@ -77,12 +91,34 @@ ENV LIBXML_CFLAGS "-I/src/usr/include/libxml2"
 ENV SQLITE_CFLAGS "-I/src/usr/include/sqlite3"
 ENV SQLITE_LIBS "-L/src/usr/lib"
 
-#emconfigure ./configure --enable-embed=static --enable-sdl --disable-opcache --disable-all
+
+    #emconfigure ./configure --enable-embed=static --enable-sdl --disable-opcache --disable-all
+RUN apt-get update && \
+      apt-get --no-install-recommends -y install \
+        libsdl2-dev \
+        libsdl2-2.0-0 \
+    	pkg-config \
+        libsdl2-image-dev \
+        libsdl2-ttf-dev \
+    	libsdl2-mixer-dev
+
+RUN export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+# RUN pkg-config --cflags --libs sdl2 && sleep 500
+# TODO : (autre piste voir dans config-image.sdl pour mettre l'emplacement direct) RUN find /usr -name sdl2.pc 2>/dev/null && sleep 500
+
+#export _SDL2_CFLAGS="-I/usr/include/SDL2 -D_REENTRANT"
+# export _SDL2_LIBS="-lSDL2" \
+
+	#export _SDL2_CFLAGS="-I/path/to/sdl2/include"
+#export _SDL2_LIBS="-L/path/to/sdl2/lib -lSDL2" \
+# export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH
+
 RUN cd /src/php-src && ./buildconf --force \
     && emconfigure ./configure \
 		--enable-embed=static \
 		--with-layout=GNU  \
     	--enable-sdl 	   \
+    	--with-sdl_image \
 		--with-libxml      \
 		--enable-xml       \
 		--disable-cgi      \
@@ -132,6 +168,9 @@ RUN mkdir /build && cd /src/php-src && emcc $OPTIMIZE \
 	-s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "UTF8ToString", "lengthBytesUTF8", "FS"]' \
 	-s ENVIRONMENT=$WASM_ENVIRONMENT    \
     -s USE_SDL=2 \
+    -s USE_LIBPNG=1 \
+    -s USE_SDL_IMAGE=2 \
+    -s SDL2_IMAGE_FORMATS='["bmp", "png","jpg"]' \
 	-s FORCE_FILESYSTEM=1            \
 	-s MAXIMUM_MEMORY=2gb             \
 	-s INITIAL_MEMORY=$INITIAL_MEMORY \
@@ -153,3 +192,12 @@ RUN rm -r /src/*
 
 FROM scratch
 COPY --from=php-wasm /build/ .
+#Comment le désactiver pour déboguer ou éviter la minification :
+#Tu peux :
+#
+#Remplacer -O3 par -O0 (pas d'optimisation).
+#
+#Supprimer -flto et --llvm-lto 2.
+#
+#Ajouter -g4 pour avoir des symboles de debug dans le JS et dans le .wasm.
+#

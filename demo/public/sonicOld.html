@@ -1,0 +1,553 @@
+<html>
+<body>
+<canvas id="canvas" width="1000" height="1000" style="display: block; background: #111;"></canvas>
+
+
+<textarea id="php">
+
+	$path = '/src/';
+if (is_dir($path)) {
+    if ($handle = opendir($path)) {
+        echo "Contenu du dossier '$path':<br><br>";
+        while (false !== ($entry = readdir($handle))) {
+            echo htmlspecialchars($entry) . "<br>";
+        }
+        closedir($handle);
+    } else {
+        echo "Impossible d'ouvrir le dossier.";
+    }
+} else {
+    echo "Le chemin spécifié n'est pas un dossier.";
+}
+
+
+	function sdl_frame($renderer)
+	{
+
+	$start = hrtime(true);
+
+		$GLOBALS['count']++ ;
+
+		SDL_SetRenderDrawColor($renderer, rand(1,255), 255, 0, 255);
+		SDL_RenderClear($renderer);
+		SDL_RenderPresent($renderer);
+
+	if (rand(1,100) == 5)
+		var_dump($GLOBALS['count']);
+
+	$end = hrtime(true);
+	// var_dump ("Frame time: " . ($end - $start)/1e6 . "ms\n");
+
+}
+
+
+
+	SDL_Init(SDL_INIT_VIDEO);
+	$GLOBALS['count'] = 0;
+
+$window = SDL_CreateWindow(
+	"PHP SDL2 in WebAssembly",
+	0, 0,
+	500, 500,
+	SDL_WINDOW_SHOWN
+);
+
+
+if (!$window) {
+	echo "Erreur SDL_CreateWindow : " . SDL_GetError() . "\n";
+	exit(1);
+}
+	$renderer = SDL_CreateRenderer($window, -1, SDL_RENDERER_ACCELERATED);
+	// sdl_frame($renderer);
+//	var_dump($renderer);
+//	return "ok2" ;
+
+
+</textarea>
+
+<script type="module">
+	import phpBinary from "./php-web.mjs";
+	async function main() {
+		const output = document.getElementById('output')
+		const buffer = [];
+		const canvas = document.getElementById("canvas");
+
+		const { ccall, FS } = await phpBinary({
+			canvas: document.getElementById('canvas'),
+			print(data) {
+				console.log(data);
+
+				//	buffer.push(data);
+			}
+		});
+
+		window.FS = FS;
+		window.run = () => {
+			// Note that `/src` is the path we used when preloading!
+
+			ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
+			// ccall("phpw", null, ["string"], ["/src/index.php"]);
+//			output.contentWindow.document.body.innerHTML = buffer.join('');
+//			buffer.length = 0;
+		}
+
+		run();
+
+//alert(document.getElementById('php').value);
+
+		// ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
+
+		return "ok" ;
+
+		// console.log(ccall("phpw_exec", "string", ["string"], ["return 2 ;"]));
+
+		// window.FS = FS;
+		// window.run = () => {
+		// 	// Note that `/src` is the path we used when preloading!
+		// 	//ccall("phpw", null, ["string"], ["/src/index.php"]);
+		// 	//output.contentWindow.document.body.innerHTML = buffer.join('');
+		// 	// buffer.length = 0;
+		// }
+		//
+		// run();
+	}
+
+	await main();
+</script>
+
+
+</body>
+</html>
+
+
+
+
+
+<html>
+<body>
+<canvas id="canvas" width="1000" height="1000" style="display: block; background: #111;"></canvas>
+
+
+<textarea id="php">
+<?php
+
+
+
+$detectedColisions = [] ;
+
+$winW = 512 ; //1512 ; // 512; // resolution master system (x2 because im not 8x8 but 16x16)
+$winH = 248 ; // 448;
+
+$debug = true  ;
+ $debug = false ;
+
+$disableTiles = false ;
+$enableColisionDraw = false ;
+
+	SDL_Init(SDL_INIT_VIDEO);
+ $levelN = 1;
+
+	$fixedOffsetY = 95;
+//$winW = 912 ; //1512 ; // 512; // resolution master system (x2 because im not 8x8 but 16x16)
+//$winH = 248 ; // 448;
+$tileSize = 32;
+
+$walkSpeed = 300;
+$runSpeed = 600;
+$sonicAngle = 0 ;
+$currentSpeed = 0.0;           // vitesse actuelle réelle
+$acceleration = 400; // 700.0;         // px/sec²
+$deceleration = 50.0;        // friction
+$maxSpeed = 600;         // vitesse max
+
+
+$isRolling = false;
+$rollTimer = 0.0;
+$rollDuration = 1.8;
+$rollAnimationTimer = 0.0;
+$rollAnimationSpeed = 15;
+$rollFrame = 0;
+$rollVelocity = 0.0;               // vitesse actuelle en roulade
+$rollMinVelocity = 75;            // vitesse minimale pour déclencher
+$rollStopThreshold = 20;           // seuil pour forcer l'arrêt
+$rollFriction = 0.5;               // facteur de ralentissement
+$canRoll = true; // Empêche d’enchaîner plusieurs roulades
+$minRollingSpeed = 20; // Vitesse minimale pour autoriser la roulade
+
+
+$isJumping = false;
+$jumpVelocity = 0.0;
+$gravity = 4000.0;
+$jumpPower = -1000.0; // négatif = vers le haut
+$fallGravity = 4000.0; // gravité de chute (en px/s²)
+$fallMaxSpeed = 1000.0; // vitesse max de chute
+
+$cameraX = 0;
+$targetCameraX = 0;
+$cameraLerpSpeed = 5.0;
+$sonicX = 3; // position de Sonic sur la map
+$sonicY = 0 ;
+
+$cameraY = 0;
+$targetCameraY = 0;
+$cameraYOffset = 80.0;
+$cameraLerpSpeedY = 3.0;
+
+
+$window = SDL_CreateWindow(
+	"PHP SDL2 in WebAssembly",
+	0, 0,
+	500, 500,
+	SDL_WINDOW_SHOWN
+);
+
+
+if (!$window) {
+	echo "Erreur SDL_CreateWindow : " . SDL_GetError() . "\n";
+	exit(1);
+}
+	$renderer = SDL_CreateRenderer($window, -1, SDL_RENDERER_ACCELERATED);
+	$renderTexture = SDL_CreateTexture($renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, $winW, $winH);
+
+
+// sudo apt-get install libSDL-ttf2.0-0
+// sudo apt install libsdl2-ttf-2.0-0
+/* $ttf = new TTF();
+$ttf->init();
+
+// sudo apt-get install libSDL-ttf2.0-0
+$font = $ttf->TTF_OpenFont(__DIR__ . '/NiseSegaSonic.TTF', 29);
+
+echo 'Hinting: ' . $ttf->TTF_GetFontHinting($font) . "\n";
+echo 'Kerning: ' . $ttf->TTF_GetFontKerning($font) . "\n";
+echo 'Style:   ' . match($ttf->TTF_GetFontStyle($font)) {
+        TTF::TTF_STYLE_NORMAL => 'normal',
+        TTF::TTF_STYLE_BOLD => 'bold',
+        TTF::TTF_STYLE_ITALIC => 'italic',
+        TTF::TTF_STYLE_UNDERLINE => 'underline',
+        TTF::TTF_STYLE_STRIKETHROUGH => 'strikethrough',
+    }   . "\n";
+
+
+
+
+
+$color = $ttf->new('SDL_Color');
+$color->r = 255;
+$color->g = 0;
+$color->b = 0;
+
+$chaine = '0123456789ABCDEF' ;
+$fontTab = [] ;
+$chaine = str_split($chaine) ;
+foreach ($chaine as $char)
+{
+    $surfaceTTF = $sdl->cast('SDL_Surface*', $ttf->TTF_RenderText_Solid($font, $char, $color));
+    $surfaceTTF = $sdl->SDL_CreateTextureFromSurface($renderer, $surfaceTTF);
+    $fontTab[$char] = $surfaceTTF;
+}
+
+$ttf->TTF_Quit();
+*/
+
+// 10 11 12 ok => 13 ??? (niveua submergé?)
+// 14 15 ok => 16 ??? 17 ???? (17 semble etre le suivant)
+// 18 ??? 19 ??? 20 ?? 21 ?
+// 27 ok , 30 presque ok , 26 ok
+
+$levelNTile[1] = 1 ; $levelNTile[2] = 2 ; $levelNTile[3] = 3 ; // green hill zone
+$levelNTile[4] = 4 ; $levelNTile[5] = 5 ; $levelNTile[6] = 6 ; // bridge
+$levelNTile[7] = 7 ; $levelNTile[8] = 8 ; $levelNTile[9] = 9 ; // jungle
+$levelNTile[10] = 10 ; $levelNTile[11] = 11 ; $levelNTile[12] = 12 ; // labyrinth // tileset13 ??
+$levelNTile[13] = 14 ; $levelNTile[14] = 15 ; $levelNTile[15] = 16 ; // Scrap Brain Act 1
+$levelNTile[16] = 18 ; $levelNTile[17] = 19 ; // Sky Base
+$levelNTile[18] = 26 ; // Skybase Boss
+$levelNTile[19] = 1 ; // $155A4–A5	18: End Sequence
+$levelNTile[20] = 0 ; // unused level !
+$levelNTile[21] = 14 ; // 20: Scrap Brain Act 2 (Emerald Maze), from corridor
+$levelNTile[22] = 14 ; //	21: Scrap Brain Act 2 (Ballhog Area)
+$levelNTile[23] = 14 ; // 22: Scrap Brain Act 2, from transporter
+$levelNTile[24] = 14 ; // 23: Scrap Brain Act 2 (Emerald Maze), from transporter
+$levelNTile[25] = 14 ; // 24: Scrap Brain Act 2, from Emerald Maze
+$levelNTile[26] = 26 ; //25: Scrap Brain Act 2, from Ballhog Area
+$levelNTile[27] = 27 ; // semble ok
+
+$levelNTile[28] = 30 ; // BONUS !
+$levelNTile[29] = 30 ; //25: Scrap Brain Act 2, from Ballhog Area
+$levelNTile[30] = 30 ; $levelNTile[31] = 30 ; $levelNTile[32] = 30 ;$levelNTile[33] = 30 ;$levelNTile[34] = 30 ; $levelNTile[35] = 30 ; // bonus
+
+
+
+// TODO : multiple level!
+	$tilesetTexture = IMG_LoadTexture($renderer,'/src/tileset' . $levelNTile[$levelN] . '.png');
+	$tilesetSurfaceSonic = IMG_Load('/src/tileset-sonic.png');
+
+// $tilesetSurface = $sdl->cast('SDL_Surface*', $sdlImage->IMG_Load(__DIR__ . '/tileset' . $levelNTile[$levelN] . '.png'));
+// $tilesetTexture = $sdl->SDL_CreateTextureFromSurface($renderer, $tilesetSurface);
+// $sdl->SDL_FreeSurface($tilesetSurface);
+
+	/*
+$tilesetSurfaceSonic = $sdl->cast('SDL_Surface*', $sdlImage->IMG_Load(__DIR__ . '/tileset-sonic.png'));
+$green = $sdl->SDL_MapRGB($tilesetSurfaceSonic->format, 0, 72, 0);
+$sdl->SDL_SetColorKey($tilesetSurfaceSonic, 1, $green);
+$tilesetTextureSonic = $sdl->SDL_CreateTextureFromSurface($renderer, $tilesetSurfaceSonic);
+$sdl->SDL_FreeSurface($tilesetSurfaceSonic);
+*/
+
+
+$tilemap = [];
+// read level 1
+//$level = file_get_contents(__DIR__ . '/sonic_level/level1.bin');
+
+$level = file_get_contents(__DIR__ . '/sonic_level/level' . $levelN . '.bin');
+$levelMeta = eval('return ' . file_get_contents(__DIR__ . '/sonic_level/level' . $levelN . '.meta') . ';' );
+
+$currentPositionSoniceXinTile = $levelMeta['SX'] ;
+$currentPositionSoniceYinTile = $levelMeta['SY'] ;
+
+//$currentPositionSoniceXinTile = 0 ;
+//$currentPositionSoniceYinTile  = 12 ;
+
+$mapHeight = $levelMeta['FH'] ;
+$mapWidth = $levelMeta['FW'] ;
+
+var_dump("Heigt: " . $mapHeight);
+
+//$level = file_get_contents(__DIR__ . '/sonic_level/level4.bin');
+$tilemap = [];
+
+for ($x = 0 ; $x < $mapWidth ; $x++)
+{
+    for ($y = 0 ; $y < $mapHeight ; $y++)
+        {
+            if (isset($level[$x + $y * $mapWidth]))
+                $tilemap[$y][$x] = ord($level[$x + $y * $mapWidth]);
+        }
+}
+
+
+
+$isFalling = false;
+$fallVelocity = 0.0;
+
+// read tiles for the level
+$fp = fopen(__DIR__ . '/sonic_colision/colisionLevel1.bin','r');
+
+// remplacer I par eof
+for ($i = 0 ; $i < 184 ; $i++)
+{
+    $colision[$i] = "" ;
+    for ($j = 0 ; $j < 8 ; $j++)
+    {
+        $colision[$i] .= fread($fp, 16); // 256 tiles de 128 octets
+    }
+
+//    $colision[$i] = bin2hex($colision[$i]);
+}
+
+
+
+
+
+$solidity = file_get_contents(__DIR__. '/sonic_level/level' . $levelN . '.solidity');
+$solidity = str_split($solidity);
+$solidityInfoSource = include (__DIR__.'/sonic_colision/tileCol.data.php');
+
+$tilesColision = [] ;
+$tilesColisionWay = [] ;
+
+foreach ($solidity as $key => $value)
+{
+
+    $value = ord($value) ;
+    // pk certaine ne sont pas setté?
+    if (isset($solidityInfoSource[$value])) {
+        $tilesColision[$key] = $solidityInfoSource[$value]['value'];
+        $tilesColisionWay[$key] = $solidityInfoSource[$value]['colisionWay'];
+    }
+
+}
+
+
+
+
+/*
+$tilesColision = [] ;
+foreach ($colision as $key => $value)
+{
+
+    // transform la chaine en un tableau de 32x32 avec des 0 et 1
+
+    $value = str_split($value);
+    $x = 0 ;
+    $y = 0 ;
+    $memory = false ;
+
+    foreach ($value as $valueAscii)
+    {
+
+
+        $valueAscii = ord($valueAscii);
+        // i want binaray value of $valueAscii (its a 8 bit) , to binary (with pad)
+        $valueAscii = str_pad(decbin($valueAscii), 8, '0', STR_PAD_LEFT);
+//        var_dump($valueAscii);
+
+        $valueAscii = str_split($valueAscii);
+//        var_dump($valueAscii);
+
+        foreach ($valueAscii as $valueBinary) {
+            $tilesColision[$key][$y++][$x] = (int)$valueBinary ; // inverse X et Y car on parcours de haut en bas les data !
+
+            if ($y > 31)
+            {
+                $y = 0 ;
+                $x++ ;
+//                $memory = false ; // rempli le vide dessous
+            }
+
+        }
+    }
+}
+*/
+
+
+
+
+//$levelSize[1] = 184; $levelSize[2] = 184 ; $levelSize[3] = 184 ;
+//$levelSize[4] = 144; $levelSize[5] = 144 ; $levelSize[6] = 144 ;
+//$levelSize[7] = 160; $levelSize[8] = 160 ; $levelSize[9] = 160 ;
+//$levelSize[10] = 176; $levelSize[11] = 176 ; $levelSize[12] = 176 ;
+//$levelSize[13] = 192; $levelSize[14] = 192 ; $levelSize[15] = 192 ;
+//$levelSize[16] = 216; $levelSize[17] = 216 ; $levelSize[18] = 216 ;
+//$levelSize[19] = 184; // end sequence
+//$levelSize[20] = 1 ; // unused level !
+//$levelSize[21] = 192; $levelSize[22] = 192 ; $levelSize[23] = 192 ; $levelSize[24] = 192 ; $levelSize[25] = 192 ;
+//$levelSize[26] = 192; // pas sur
+//$levelSize[27] = 104; // pas sur
+//$levelSize[28] = 128; $levelSize[29] = 128 ; $levelSize[30] = 128 ; $levelSize[31] = 128 ; $levelSize[32] = 128 ; $levelSize[33] = 128 ; $levelSize[34] = 128 ; $levelSize[35] = 128 ; // bonus
+//
+//$colisionLevel = $levelSize[$levelN] ;
+//
+
+
+$event = $sdl->new('SDL_Event');
+
+$running = true;
+$left = false;
+$right = false;
+
+$up = false;
+$down = false;
+$lookingUp = false;
+$lookingDown = false;
+
+$currentFrame = 0;
+$animationTimer = 0.0;
+$animationSpeed = 10;
+
+$isMoving = false;
+$isFacingLeft = false;
+$isRunning = false;
+$wasRunning = false;
+$runThreshold = 1.0;
+$moveTimer = 0.0;
+
+$isBraking = false;
+$brakeTimer = 0.0;
+$brakeDuration = 0.2;
+$brakeDirection = null;
+$brakeAnimationTimer = 0.0;
+$brakeAnimationSpeed = 12;
+$brakeFrame = 5;
+$brakeVelocity = 0.0; // inertie pendant le braking
+
+$decelerating = false;
+$decelerationTimer = 0.0;
+$decelerationVelocity = 0.0; // inertie lors de la décélération
+$decelerationDuration = 0.5;
+
+$lastDirection = 'right';
+
+
+//$sonicY = $winH - 112; // position verticale de Sonic (sol)
+//$groundY = $winH - 112;
+
+
+$velocityX = 0.0; // vitesse horizontale unifiée
+$velocityY = 0.0;
+
+// exec('nohup /usr/bin/play ./sonic.mp3 > /dev/null 2>&1 &');
+
+
+$sonicW = 24;
+$sonicH = 32;
+$spacing = 27;
+$offsetFrameX = 3;
+
+
+// --- Initialisation de Sonic en pixels à partir de sa position en tiles ---
+$sonicX = $currentPositionSoniceXinTile * $tileSize  ;
+$sonicY = $currentPositionSoniceYinTile * $tileSize ; //+ $sonicH  ; // position au sol (en bas du sprite)
+$cameraY = $sonicY - $fixedOffsetY*2 + $sonicH/2; // todo calculer bonne position
+$targetCameraY = $cameraY;
+
+
+
+// --- Initialisation caméra pour centrer Sonic au départ (avec deadzone) ---
+$cameraX = max(0, $sonicX - ($winW / 2));
+$targetCameraX = $cameraX;
+
+
+$lastTicks = $sdl->SDL_GetTicks();
+
+$lastVelocityX = $velocityX ;
+$lastVelocityY = $velocityY ;
+$lastSonicX = $sonicX ;
+$lastSonicY = $sonicY ;
+
+
+
+
+</textarea>
+
+<script type="module">
+	import phpBinary from "./php-web.mjs";
+	async function main() {
+		const output = document.getElementById('output')
+		const buffer = [];
+		const canvas = document.getElementById("canvas");
+
+		const { ccall, FS } = await phpBinary({
+			canvas: document.getElementById('canvas'),
+			print(data) {
+				console.log(data);
+
+			//	buffer.push(data);
+			}
+		});
+
+//alert(document.getElementById('php').value);
+
+		ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
+
+		return "ok" ;
+
+		// console.log(ccall("phpw_exec", "string", ["string"], ["return 2 ;"]));
+
+		// window.FS = FS;
+		// window.run = () => {
+		// 	// Note that `/src` is the path we used when preloading!
+		// 	//ccall("phpw", null, ["string"], ["/src/index.php"]);
+		// 	//output.contentWindow.document.body.innerHTML = buffer.join('');
+		// 	// buffer.length = 0;
+		// }
+		//
+		// run();
+	}
+
+	await main();
+</script>
+
+
+</body>
+</html>

@@ -5,22 +5,6 @@
 
 <textarea id="php">
 
-	$path = '/src/';
-if (is_dir($path)) {
-    if ($handle = opendir($path)) {
-        echo "Contenu du dossier '$path':<br><br>";
-        while (false !== ($entry = readdir($handle))) {
-            echo htmlspecialchars($entry) . "<br>";
-        }
-        closedir($handle);
-    } else {
-        echo "Impossible d'ouvrir le dossier.";
-    }
-} else {
-    echo "Le chemin spécifié n'est pas un dossier.";
-}
-
-
 	function sdl_frame($renderer)
 	{
 
@@ -81,21 +65,9 @@ if (!$window) {
 			}
 		});
 
-		window.FS = FS;
-		window.run = () => {
-			// Note that `/src` is the path we used when preloading!
-
-			ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
-			// ccall("phpw", null, ["string"], ["/src/index.php"]);
-//			output.contentWindow.document.body.innerHTML = buffer.join('');
-//			buffer.length = 0;
-		}
-
-		run();
-
 //alert(document.getElementById('php').value);
 
-		// ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
+		ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
 
 		return "ok" ;
 

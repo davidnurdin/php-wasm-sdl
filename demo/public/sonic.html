@@ -29,7 +29,24 @@ if (is_dir($path)) {
 		$GLOBALS['count']++ ;
 
 		SDL_SetRenderDrawColor($renderer, rand(1,255), 255, 0, 255);
+
+
 		SDL_RenderClear($renderer);
+
+	    // Affichage de la texture
+    $dstRect = new SDL_Rect(-$GLOBALS['count']*5, 00, 6800, 100); // position et taille d'affichage
+    SDL_RenderCopy($renderer, $GLOBALS['tilesetTextureSonic'], null, $dstRect);
+
+	$dstRect = new SDL_Rect(-$GLOBALS['count']*3, 120, 6800, 100); // position et taille d'affichage
+    SDL_RenderCopy($renderer, $GLOBALS['tilesetTextureSonic'], null, $dstRect);
+
+	$dstRect = new SDL_Rect(-$GLOBALS['count']*1, 240, 6800, 100); // position et taille d'affichage
+    SDL_RenderCopy($renderer, $GLOBALS['tilesetTextureSonic'], null, $dstRect);
+
+	$dstRect = new SDL_Rect(-$GLOBALS['count']*7, 360, 6800, 100); // position et taille d'affichage
+    SDL_RenderCopy($renderer, $GLOBALS['tilesetTextureSonic'], null, $dstRect);
+
+
 		SDL_RenderPresent($renderer);
 
 	if (rand(1,100) == 5)
@@ -39,10 +56,12 @@ if (is_dir($path)) {
 	// var_dump ("Frame time: " . ($end - $start)/1e6 . "ms\n");
 
 }
-
-
+// var_dump(scandir('/src'));
+//  var_dump(get_loaded_extensions());
+	// die();
 
 	SDL_Init(SDL_INIT_VIDEO);
+
 	$GLOBALS['count'] = 0;
 
 $window = SDL_CreateWindow(
@@ -62,6 +81,30 @@ if (!$window) {
 //	var_dump($renderer);
 //	return "ok2" ;
 
+	// IMG_Load not exist !
+	var_dump('hhhhhhhhhhhhhhhhh2');
+		var_dump(function_exists('IMG_Load'));
+	// doesnt work IMG_Load('/src/tileset-sonic.png');
+	// INIT
+	// IMG_Init(IMG_INIT_PNG);
+	var_dump(SDL_INIT_VIDEO);
+	// SDL_Init(SDL_INIT_VIDEO);
+	var_dump('exists : ' . file_exists('/src/tileset10.png'));
+	// var_dump(IMG_Load('/src/tileset10.png'));
+	$GLOBALS['tilesetSurfaceSonic'] = IMG_Load('/src/tileset1.png');
+//	var_dump($GLOBALS['tilesetSurfaceSonic']);
+
+// Création de la texture
+$texture = SDL_CreateTextureFromSurface($renderer, $GLOBALS['tilesetSurfaceSonic']);
+if (!$texture) {
+    echo "Erreur SDL_CreateTextureFromSurface : " . SDL_GetError() . "\n";
+    exit(1);
+}
+$GLOBALS['tilesetTextureSonic'] = $texture;
+	//var_dump($texture);
+if (!$GLOBALS['tilesetSurfaceSonic']) {
+    echo "Erreur IMG_Load : " . SDL_GetError() . "\n";
+}
 
 </textarea>
 
@@ -77,7 +120,7 @@ if (!$window) {
 			print(data) {
 				console.log(data);
 
-			//	buffer.push(data);
+				//	buffer.push(data);
 			}
 		});
 
