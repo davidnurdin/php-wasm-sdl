@@ -1,0 +1,20 @@
+{
+    "name": "david/src",
+    "autoload": {
+        "psr-4": {
+            "David\\Src\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "David Nurdin",
+            "email": "david.nurdin@respawnsive.com"
+        }
+    ],
+    "require": {},
+    "config": {
+        "platform": {
+            "php": "8.3"
+        }
+    }
+}

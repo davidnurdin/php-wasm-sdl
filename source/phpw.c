@@ -5,6 +5,8 @@
 #include "zend_globals_macros.h"
 #include "zend_exceptions.h"
 #include "zend_closures.h"
+#include <stdbool.h> // Pour le type bool
+
 
 
 // Variables globales pour la boucle
@@ -101,7 +103,11 @@ void EMSCRIPTEN_KEEPALIVE phpw_run(char *code)
   php_embed_init(0, NULL);
   zend_try
   {
+//  	 fprintf(stderr, "Erreur : test ERREUR\n");
     zend_eval_string(code, NULL, "php-wasm run script");
+
+	// define bool error to false (in C , not in Zend)
+	bool errorFlag = false;
 
 
     // Préparer l'appel à la fonction PHP sdl_frame($renderer)
@@ -109,34 +115,39 @@ void EMSCRIPTEN_KEEPALIVE phpw_run(char *code)
 
     if (zend_fcall_info_init(&function_name, 0, &fci, &fcc, NULL, NULL) != SUCCESS) {
         fprintf(stderr, "Erreur : sdl_frame() n'est pas callable\n");
-        return;
+        errorFlag = true ;
+        // return;
     }
 
     // Chercher la variable $renderer dans la symbol table globale PHP
     zval *renderer_ptr = zend_hash_str_find(&EG(symbol_table), "renderer", strlen("renderer"));
     if (!renderer_ptr) {
         fprintf(stderr, "Erreur : variable $renderer introuvable\n");
-        return;
+        errorFlag = true ;
+        // return;
     }
 
     // Copier $renderer dans un zval utilisable pour l'appel (a voir)
 //    ZVAL_COPY(&renderer_zval, renderer_ptr);
-    ZVAL_COPY_VALUE(&renderer_zval, renderer_ptr); // évite l'alloc/copy
+	if (!errorFlag)
+	{
+		ZVAL_COPY_VALUE(&renderer_zval, renderer_ptr); // évite l'alloc/copy
 
 
-    // Préparer les paramètres d'appel
-    fci.param_count = 1;
-    fci.params = &renderer_zval;
-    fci.retval = &retval;
+		// Préparer les paramètres d'appel
+		fci.param_count = 1;
+		fci.params = &renderer_zval;
+		fci.retval = &retval;
 
-    php_callable_ready = 1; // Prêt pour main_loop()
-
-
+		php_callable_ready = 1; // Prêt pour main_loop()
 
 
 
 
-    emscripten_set_main_loop(main_loop, 0, 1);
+
+
+		emscripten_set_main_loop(main_loop, 10000, 1);
+	}
 
 
 

@@ -19,6 +19,22 @@ use Symfony\Component\Config\FileLocator;
 	use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 
+	$path = '/src/src/config';
+if (is_dir($path)) {
+    if ($handle = opendir($path)) {
+        echo "Contenu du dossier '$path':<br><br>";
+        while (false !== ($entry = readdir($handle))) {
+            echo htmlspecialchars($entry) . "<br>";
+        }
+        closedir($handle);
+    } else {
+        echo "Impossible d'ouvrir le dossier.";
+    }
+} else {
+    echo "Le chemin spécifié n'est pas un dossier.";
+}
+
+
 	function run($maxTicks)
 	{
 		$loop = Loop::get();
@@ -49,11 +65,29 @@ use React\EventLoop\LoopInterface;
 
 	function sdl_frame($renderer)
 	{
-		if ($GLOBALS['renderer'] == null)
-		return ;
 
-		run(1); // Run 10 tick by 10 tick
-	}
+		run(10); // Run 10 tick by 10 tick
+
+		SDL_RenderClear($renderer);
+
+		$GLOBALS['count']++;
+
+	    // Affichage de la texture
+    $dstRect = new SDL_Rect(-$GLOBALS['count']*5, 00, 6800, 100); // position et taille d'affichage
+    SDL_RenderCopy($renderer, $GLOBALS['tilesetTextureSonic'], null, $dstRect);
+
+	$dstRect = new SDL_Rect(-$GLOBALS['count']*3, 120, 6800, 100); // position et taille d'affichage
+    SDL_RenderCopy($renderer, $GLOBALS['tilesetTextureSonic'], null, $dstRect);
+
+	$dstRect = new SDL_Rect(-$GLOBALS['count']*1, 240, 6800, 100); // position et taille d'affichage
+    SDL_RenderCopy($renderer, $GLOBALS['tilesetTextureSonic'], null, $dstRect);
+
+	$dstRect = new SDL_Rect(-$GLOBALS['count']*7, 360, 6800, 100); // position et taille d'affichage
+    SDL_RenderCopy($renderer, $GLOBALS['tilesetTextureSonic'], null, $dstRect);
+
+	SDL_RenderPresent($renderer);
+
+}
 
 
 
@@ -70,6 +104,7 @@ if (!extension_loaded('sdl')) {
 
 
 
+	/*
 	$container = new ContainerBuilder();
 	$loader = new YamlFileLoader($container, new FileLocator('/src/src/' . '/config'));
 	$loader->load('services.yaml'); // bug ici
@@ -83,14 +118,64 @@ if (!extension_loaded('sdl')) {
 	{
 		var_dump($e->getMessage());
 	}
-
-	$GLOBALS['renderer'] = null ;
 	$application = new Application();
 	$application->add($command);
 	$application->setDefaultCommand($command->getName(), true); // Set the default command
 	$input = new ArrayInput([]);
 	$application->doRun($input, new Symfony\Component\Console\Output\ConsoleOutput());
-	$renderer = $GLOBALS['renderer'] ;
+*/
+	
+
+
+	 // include ('/src/src/app.php');
+
+	SDL_Init(SDL_INIT_VIDEO);
+
+	$GLOBALS['count'] = 0;
+
+$window = SDL_CreateWindow(
+	"PHP SDL2 in WebAssembly",
+	0, 0,
+	500, 500,
+	SDL_WINDOW_SHOWN
+);
+
+
+if (!$window) {
+	echo "Erreur SDL_CreateWindow : " . SDL_GetError() . "\n";
+	exit(1);
+}
+	$renderer = SDL_CreateRenderer($window, -1, SDL_RENDERER_ACCELERATED);
+	// sdl_frame($renderer);
+//	var_dump($renderer);
+//	return "ok2" ;
+
+	// IMG_Load not exist !
+	var_dump('hhhhhhhhhhhhhhhhh2');
+		var_dump(function_exists('IMG_Load'));
+	// doesnt work IMG_Load('/src/tileset-sonic.png');
+	// INIT
+	// IMG_Init(IMG_INIT_PNG);
+	var_dump(SDL_INIT_VIDEO);
+	// SDL_Init(SDL_INIT_VIDEO);
+	var_dump('exists : ' . file_exists('/src/tileset10.png'));
+	// var_dump(IMG_Load('/src/tileset10.png'));
+	$GLOBALS['tilesetSurfaceSonic'] = IMG_Load('/src/tileset1.png');
+//	var_dump($GLOBALS['tilesetSurfaceSonic']);
+
+// Création de la texture
+$texture = SDL_CreateTextureFromSurface($renderer, $GLOBALS['tilesetSurfaceSonic']);
+if (!$texture) {
+    echo "Erreur SDL_CreateTextureFromSurface : " . SDL_GetError() . "\n";
+    exit(1);
+}
+$GLOBALS['tilesetTextureSonic'] = $texture;
+	//var_dump($texture);
+if (!$GLOBALS['tilesetSurfaceSonic']) {
+    echo "Erreur IMG_Load : " . SDL_GetError() . "\n";
+}
+
+
 </textarea>
 
 <script type="module">
