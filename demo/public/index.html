@@ -1,96 +1,29 @@
 <html>
 <body>
-<canvas id="canvas" width="1000" height="1000" style="display: block; background: #111;"></canvas>
+<style>
+	.canvasCss
+	{
+		zoom: 3;
+	}
+</style>
+<canvas class="canvasCss" id="canvas" width="1000" height="1000" style="display: block; background: #111;"></canvas>
 
 
 <textarea id="php">
 
-		include ('/src/src/vendor/autoload.php');
-
-
-
-use SonicGame\Command\DefaultCommand;
-use Symfony\Component\Console\Application;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
-use Symfony\Component\Config\FileLocator;
-
-	use React\EventLoop\Loop;
-use React\EventLoop\LoopInterface;
-
-	function run($maxTicks)
-	{
-		$loop = Loop::get();
-		$tickCount = 0;
-
-		if ($maxTicks > 0) {
-			$loop->futureTick(function () use (&$tickCount, $maxTicks,&$loop) {
-				$tick = function () use (&$tickCount, $maxTicks, &$tick,&$loop) {
-					$tickCount++;
-					if ($tickCount < $maxTicks) {
-						Loop::futureTick($tick);
-					} else {
-						$loop->stop();
-					}
-				};
-				$tick(); // premier appel
-			});
-		}
-
-	 	$loop->run();
-}
-
-
-	$loop = Loop::get() ;
-	$loop->addPeriodicTimer(1, function () {
-		var_dump("WOWOW : " . $GLOBALS['xx']++) ;
-	});
+	require ('/src/src/vendor/autoload.php');
 
 	function sdl_frame($renderer)
 	{
 		if ($GLOBALS['renderer'] == null)
 		return ;
 
-		run(1); // Run 10 tick by 10 tick
+		$GLOBALS['game']->gameLoop->start(1);
 	}
 
-
-
-
-if (!extension_loaded('sdl')) {
-    die('La bibliothèque SDL n\'est pas chargée.');
-}
-
-
-
-
-	// fatal
-	// trigger_error("XXXXXXXXXXXX", E_USER_ERROR);
-
-
-
-	$container = new ContainerBuilder();
-	$loader = new YamlFileLoader($container, new FileLocator('/src/src/' . '/config'));
-	$loader->load('services.yaml'); // bug ici
-	$container->compile();
-	error_reporting(E_ALL);
-	try
-	{
-		$command = $container->get(DefaultCommand::class); // autoload pb ? folder ? dumpautoload ?
-	}
-	catch (Exception $e)
-	{
-		var_dump($e->getMessage());
-	}
-
-	$GLOBALS['renderer'] = null ;
-	$application = new Application();
-	$application->add($command);
-	$application->setDefaultCommand($command->getName(), true); // Set the default command
-	$input = new ArrayInput([]);
-	$application->doRun($input, new Symfony\Component\Console\Output\ConsoleOutput());
+	$command = include ('/src/src/app.php');
 	$renderer = $GLOBALS['renderer'] ;
+	$GLOBALS['game'] = $command->game ;
 </textarea>
 
 <script type="module">
