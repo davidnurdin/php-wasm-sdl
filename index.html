@@ -1,0 +1,99 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8" />
+	<title>Mon site</title>
+	<link rel="stylesheet" href="./style.css">
+	<script src="./script.js"></script>
+</head>
+<body>
+<style>
+	.canvasCss
+	{
+		zoom: 3;
+	}
+</style>
+<canvas class="canvasCss" id="canvas" width="1000" height="1000" style="display: block; background: #111;"></canvas>
+
+
+<textarea id="php" style="display: none">
+
+	require ('/src/src/vendor/autoload.php');
+
+	function sdl_frame($renderer)
+	{
+		if ($GLOBALS['renderer'] == null)
+		return ;
+
+		$GLOBALS['game']->gameLoop->start(1);
+	}
+
+	$command = include ('/src/src/app.php');
+	$renderer = $GLOBALS['renderer'] ;
+	$GLOBALS['game'] = $command->game ;
+</textarea>
+
+<br>
+Array Keys , => Camera control : 2 8 6 4 and 5 to recenter , F3 F4 change level ! (dont touch other)
+
+<script type="module">
+	import phpBinary from "./php-web.mjs";
+	async function main() {
+		const output = document.getElementById('output')
+		const buffer = [];
+		const canvas = document.getElementById("canvas");
+
+		const { ccall, FS } = await phpBinary({
+			canvas: document.getElementById('canvas'),
+			print(data) {
+				console.log(data);
+
+				//	buffer.push(data);
+			}
+
+			,
+
+			printErr(data) {
+				console.error('[stderr]', data);
+			}
+
+		});
+
+		window.FS = FS;
+		window.run = () => {
+			// Note that `/src` is the path we used when preloading!
+
+			ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
+			// ccall("phpw", null, ["string"], ["/src/index.php"]);
+//			output.contentWindow.document.body.innerHTML = buffer.join('');
+//			buffer.length = 0;
+		}
+
+		run();
+
+//alert(document.getElementById('php').value);
+
+		// ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
+
+		return "ok" ;
+
+		// console.log(ccall("phpw_exec", "string", ["string"], ["return 2 ;"]));
+
+		// window.FS = FS;
+		// window.run = () => {
+		// 	// Note that `/src` is the path we used when preloading!
+		// 	//ccall("phpw", null, ["string"], ["/src/index.php"]);
+		// 	//output.contentWindow.document.body.innerHTML = buffer.join('');
+		// 	// buffer.length = 0;
+		// }
+		//
+		// run();
+	}
+
+	await main();
+</script>
+
+
+</body>
+</html>

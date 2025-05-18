@@ -1,4 +1,12 @@
-<html>
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8" />
+	<title>Mon site</title>
+	<link rel="stylesheet" href="./style.css">
+	<script src="./script.js"></script>
+</head>
 <body>
 <style>
 	.canvasCss
@@ -9,7 +17,7 @@
 <canvas class="canvasCss" id="canvas" width="1000" height="1000" style="display: block; background: #111;"></canvas>
 
 
-<textarea id="php">
+<textarea id="php" style="display: none">
 
 	require ('/src/src/vendor/autoload.php');
 
@@ -25,6 +33,9 @@
 	$renderer = $GLOBALS['renderer'] ;
 	$GLOBALS['game'] = $command->game ;
 </textarea>
+
+<br>
+Array Keys , => Camera control : 2 8 6 4 and 5 to recenter , F3 F4 change level ! (dont touch other)
 
 <script type="module">
 	import phpBinary from "./php-web.mjs";
