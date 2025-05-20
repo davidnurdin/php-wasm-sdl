@@ -1,6 +1,6 @@
 # LIVE DEMO
 
-[DEMO] ( Dont working yet on android ) => https://davidnurdin.github.io/php-wasm-sdl/
+[DEMO] ( working yet on android ! ) => https://davidnurdin.github.io/php-wasm-sdl/
 
 # WASM PHP
 https://github.com/soyuka/php-wasm
