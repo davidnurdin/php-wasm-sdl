@@ -19,4 +19,4 @@ docker run \
       --exclude '*/.*' \
       --export-name=createPhpModule
 sed '/--pre-js/r demo/public/php-web.data.js' demo/public/php-web.mjs > this-has-preloaded-data-php-web.mjs ; mv this-has-preloaded-data-php-web.mjs demo/public/php-web.mjs
-php -S 127.0.0.1:8000 -t demo/public
+php -S 0.0.0.0:80 -t demo/public

@@ -16,6 +16,7 @@ RUN apt-get update && \
     git \
     libxml2 \
     libxml2-dev \
+    zlib1g-dev \
     pv \
     re2c
 
@@ -77,8 +78,12 @@ ARG JAVASCRIPT_EXTENSION=mjs
 ARG EXPORT_NAME=createPhpModule
 ARG MODULARIZE=1
 ARG EXPORT_ES6=1
-ARG ASSERTIONS=0
-ARG OPTIMIZE=-O1
+ARG ASSERTIONS=1
+ARG OPTIMIZE=-Os
+# -Os -O0
+# Si on ajoute GD le binaire grossis "trop" (avec O1 en optimisation)
+# Si on a O3 c'est trop optimisé et il arrive pas a injecter les fichier dans le wasm
+
 # optimise mieux mais enleve le preload du js (enleve les commentaire sur lequel on se base pr rajouté l'ajout du js) ARG OPTIMIZE=-O3
 # TODO: find a way to keep this, it can't be empty if defined...
 # ARG PRE_JS=
@@ -90,7 +95,13 @@ ENV LIBXML_LIBS "-L/src/usr/lib"
 ENV LIBXML_CFLAGS "-I/src/usr/include/libxml2"
 ENV SQLITE_CFLAGS "-I/src/usr/include/sqlite3"
 ENV SQLITE_LIBS "-L/src/usr/lib"
-
+#ENV ZLIB_LIBS="-Lz"
+#ENV ZLIB_CFLAGS=" "
+#ENV PNG_CFLAGS=" "
+ENV PNG_LIBS="-lpng"
+#ENV JPEG_CFLAGS=" "
+#ENV JPEG_LIBS="-ljpeg"
+# we should use PKG_CONFIG_PATH but it doesnt work :( pkg-config
 
     #emconfigure ./configure --enable-embed=static --enable-sdl --disable-opcache --disable-all
 RUN apt-get update && \
@@ -100,9 +111,13 @@ RUN apt-get update && \
     	pkg-config \
         libsdl2-image-dev \
         libsdl2-ttf-dev \
+    	zlib1g-dev \
+    	libpng-dev \
+    	libjpeg-dev \
     	libsdl2-mixer-dev
 
-RUN export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+# ENV PKG_CONFIG_PATH=/usr/bin/pkg-config
+ENV PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig/"
 # RUN pkg-config --cflags --libs sdl2 && sleep 500
 # TODO : (autre piste voir dans config-image.sdl pour mettre l'emplacement direct) RUN find /usr -name sdl2.pc 2>/dev/null && sleep 500
 
@@ -113,23 +128,32 @@ RUN export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 #export _SDL2_LIBS="-L/path/to/sdl2/lib -lSDL2" \
 # export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH
 
-RUN cd /src/php-src && ./buildconf --force \
+## debug : sudo runc exec -t $(sudo runc list | awk '$3 == "running" {print $1; exit}') /bin/bash
+#RUN echo "pause here" && sleep infinity
+
+# -s USE_LIBJPEG=1
+RUN cd /src/php-src && export PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig/' && ./buildconf --force \
     && emconfigure ./configure \
+    	CFLAGS="-s USE_ZLIB=1 -s USE_LIBPNG=1 " LDFLAGS="-s USE_ZLIB=1 -s USE_LIBPNG=1" \
+    	PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig/'  \
 		--enable-embed=static \
 		--with-layout=GNU  \
     	--enable-sdl 	   \
     	--with-sdl_image \
-		--with-libxml      \
-		--enable-xml       \
+#		--with-libxml      \
+    	--enable-gd \
+    	--with-png \
+#    	--with-jpeg \
+#		--enable-xml       \
 		--disable-cgi      \
 		--disable-cli      \
 		--disable-fiber-asm \
 		--disable-opcache  \
     	--disable-all      \
-		--enable-session   \
-		--enable-filter    \
-		--enable-calendar  \
-		--enable-dom       \
+#		--enable-session   \
+#		--enable-filter    \
+#		--enable-calendar  \
+#		--enable-dom       \
 		--disable-rpath    \
 		--disable-phpdbg   \
 		--without-pear     \
@@ -140,13 +164,12 @@ RUN cd /src/php-src && ./buildconf --force \
 		--enable-mbstring  \
 		--disable-mbregex  \
 		--with-config-file-scan-dir=/src/php  \
-		--enable-tokenizer \
-		--enable-simplexml
+		--enable-tokenizer
+#		--enable-simplexml
 		# --enable-pdo       \
 		# --with-pdo-sqlite  \
 		#--with-sqlite3
 
-# RUN echo "pause here" && sleep infinity
 
 RUN cd /src/php-src && emmake make -j8
 # PHP7 outputs a libphp7 whereas php8 a libphp
@@ -164,11 +187,15 @@ RUN cd /src/php-src && emcc $OPTIMIZE \
 RUN mkdir /build && cd /src/php-src && emcc $OPTIMIZE \
 	-o /build/php-$WASM_ENVIRONMENT.$JAVASCRIPT_EXTENSION \
 	--llvm-lto 2                     \
+    -fno-inline \
+    -s DEMANGLE_SUPPORT=1 \
 	-s EXPORTED_FUNCTIONS='["_phpw", "_phpw_flush", "_phpw_exec", "_phpw_run", "_chdir", "_setenv", "_php_embed_init", "_php_embed_shutdown", "_zend_eval_string"]' \
 	-s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "UTF8ToString", "lengthBytesUTF8", "FS"]' \
 	-s ENVIRONMENT=$WASM_ENVIRONMENT    \
     -s USE_SDL=2 \
+    -s USE_ZLIB=1 \
     -s USE_LIBPNG=1 \
+#    -s USE_LIBJPEG=1 \
     -s USE_SDL_IMAGE=2 \
     -s SDL2_IMAGE_FORMATS='["bmp", "png","jpg"]' \
 	-s FORCE_FILESYSTEM=1            \
