@@ -1,9 +1,15 @@
 #!/bin/bash
 
 #docker buildx bake
+
+docker buildx create --name wasm-builder --driver docker-container --use
+docker buildx use wasm-builder
 docker buildx bake --progress=plain
+mkdir -p cache ;
+
 cp build/php-web.* demo/public/
 docker run \
+  -v $(pwd)/cache:/emsdk/upstream/emscripten/cache \
   -v $(pwd)/demo/src:/src \
   -v $(pwd)/demo/public:/dist \
   -w /dist \
@@ -18,5 +24,8 @@ docker run \
       --no-node \
       --exclude '*/.*' \
       --export-name=createPhpModule
+
 sed '/--pre-js/r demo/public/php-web.data.js' demo/public/php-web.mjs > this-has-preloaded-data-php-web.mjs ; mv this-has-preloaded-data-php-web.mjs demo/public/php-web.mjs
+
+docker buildx use default
 php -S 0.0.0.0:80 -t demo/public

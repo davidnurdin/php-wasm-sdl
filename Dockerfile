@@ -132,7 +132,7 @@ ENV PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig/"
 #RUN echo "pause here" && sleep infinity
 
 # -s USE_LIBJPEG=1
-RUN cd /src/php-src && export PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig/' && ./buildconf --force \
+RUN --mount=type=cache,target=/emsdk/upstream/emscripten/cache cd /src/php-src && export PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig/' && ./buildconf --force \
     && emconfigure ./configure \
     	CFLAGS="-s USE_ZLIB=1 -s USE_LIBPNG=1 " LDFLAGS="-s USE_ZLIB=1 -s USE_LIBPNG=1" \
     	PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig/'  \
@@ -175,7 +175,7 @@ RUN cd /src/php-src && emmake make -j8
 # PHP7 outputs a libphp7 whereas php8 a libphp
 RUN cd /src/php-src && bash -c '[[ -f .libs/libphp7.la ]] && mv .libs/libphp7.la .libs/libphp.la && mv .libs/libphp7.a .libs/libphp.a && mv .libs/libphp7.lai .libs/libphp.lai || exit 0'
 COPY ./source /src/source
-RUN cd /src/php-src && emcc $OPTIMIZE \
+RUN --mount=type=cache,target=/emsdk/upstream/emscripten/cache cd /src/php-src && emcc $OPTIMIZE \
 		-I .     \
 		-I Zend  \
 		-I main  \
@@ -184,12 +184,12 @@ RUN cd /src/php-src && emcc $OPTIMIZE \
 		/src/source/phpw.c \
 		-o /src/phpw.o \
 		-s ERROR_ON_UNDEFINED_SYMBOLS=0
-RUN mkdir /build && cd /src/php-src && emcc $OPTIMIZE \
+RUN --mount=type=cache,target=/emsdk/upstream/emscripten/cache mkdir /build && cd /src/php-src && emcc $OPTIMIZE \
 	-o /build/php-$WASM_ENVIRONMENT.$JAVASCRIPT_EXTENSION \
 	--llvm-lto 2                     \
     -fno-inline \
     -s DEMANGLE_SUPPORT=1 \
-	-s EXPORTED_FUNCTIONS='["_phpw", "_phpw_flush", "_phpw_exec", "_phpw_run", "_chdir", "_setenv", "_php_embed_init", "_php_embed_shutdown", "_zend_eval_string"]' \
+	-s EXPORTED_FUNCTIONS='["_phpw_run", "_chdir", "_setenv", "_php_embed_init", "_php_embed_shutdown", "_zend_eval_string"]' \
 	-s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "UTF8ToString", "lengthBytesUTF8", "FS"]' \
 	-s ENVIRONMENT=$WASM_ENVIRONMENT    \
     -s USE_SDL=2 \

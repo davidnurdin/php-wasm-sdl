@@ -22,6 +22,11 @@
 
 	require ('/src/src/vendor/autoload.php');
 
+	function sdl_update_events()
+	{
+			var_dump($GLOBALS['ok']++) ;
+	}
+
 	function sdl_frame($renderer)
 	{
 		if ($GLOBALS['renderer'] == null)
@@ -33,6 +38,7 @@
 	$command = include ('/src/src/app.php');
 	$renderer = $GLOBALS['renderer'] ;
 	$GLOBALS['game'] = $command->game ;
+	$GLOBALS['game']->gameLoop->start(1);
 </textarea>
 <br>
 Array Keys , => Camera control : 2 8 6 4 and 5 to recenter , F3 F4 change level ! (dont touch other)
