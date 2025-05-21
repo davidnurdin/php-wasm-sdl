@@ -3,9 +3,7 @@
 <html lang="fr">
 <head>
 	<meta charset="UTF-8" />
-	<title>Mon site</title>
-	<link rel="stylesheet" href="./style.css">
-	<script src="./script.js"></script>
+	<title>Sonic</title>
 </head>
 <body>
 <style>
@@ -19,26 +17,29 @@
 
 <textarea id="php" style="display: none">
 
-
 	require ('/src/src/vendor/autoload.php');
 
-	function sdl_update_events()
+	// utilise setTimeout
+	function sdl_update_events($app)
 	{
-			var_dump($GLOBALS['ok']++) ;
+		// maximum speed (we stop sdl) !
+		$app->game->disableSdl = true ;
+		$app->game->gameLoop->start(1);
+		$app->game->disableSdl = false ;
 	}
 
-	function sdl_frame($renderer)
+	// utilise animatedRequest
+	function sdl_frame($app)
 	{
-		if ($GLOBALS['renderer'] == null)
-		return ;
+		if ($app->game->sdl->renderer->getRenderer() == null)
+			return ;
 
-		$GLOBALS['game']->gameLoop->start(1);
+		$app->game->disableSdl = false ;
+		$app->game->gameLoop->start(1);
 	}
 
-	$command = include ('/src/src/app.php');
-	$renderer = $GLOBALS['renderer'] ;
-	$GLOBALS['game'] = $command->game ;
-	$GLOBALS['game']->gameLoop->start(1);
+	$app = include ('/src/src/app.php');
+
 </textarea>
 <br>
 Array Keys , => Camera control : 2 8 6 4 and 5 to recenter , F3 F4 change level ! (dont touch other)
@@ -49,7 +50,6 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 
 
 </textarea>
-
 
 <script type="module">
 	import phpBinary from "./php-web.mjs";
@@ -62,50 +62,23 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 			canvas: document.getElementById('canvas'),
 			print(data) {
 				console.log(data);
-
 				document.getElementById('debug').value += '[stdout]' + data + "\n" ;
-				// document.getElementById('debug').value = '[stdout]' + data + "\n" +  document.getElementById('debug').value + "\n"
 			}
-
 			,
-
 			printErr(data) {
 				console.error('[stderr]', data);
 				document.getElementById('debug').value += '[stderr]' + data + "\n" ;
-				// document.getElementById('debug').value = '[stderr]' + data + "\n" +  document.getElementById('debug').value + "\n"
 			}
 
 		});
 
+
 		window.FS = FS;
 		window.run = () => {
-			// Note that `/src` is the path we used when preloading!
-
 			ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
-			// ccall("phpw", null, ["string"], ["/src/index.php"]);
-//			output.contentWindow.document.body.innerHTML = buffer.join('');
-//			buffer.length = 0;
 		}
-
 		run();
-
-//alert(document.getElementById('php').value);
-
-		// ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
-
 		return "ok" ;
-
-		// console.log(ccall("phpw_exec", "string", ["string"], ["return 2 ;"]));
-
-		// window.FS = FS;
-		// window.run = () => {
-		// 	// Note that `/src` is the path we used when preloading!
-		// 	//ccall("phpw", null, ["string"], ["/src/index.php"]);
-		// 	//output.contentWindow.document.body.innerHTML = buffer.join('');
-		// 	// buffer.length = 0;
-		// }
-		//
-		// run();
 	}
 
 	await main();
