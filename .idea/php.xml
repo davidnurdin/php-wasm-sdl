@@ -10,6 +10,47 @@
     <option name="highlightLevel" value="WARNING" />
     <option name="transferred" value="true" />
   </component>
+  <component name="PhpIncludePathManager">
+    <include_path>
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/var-exporter" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/composer" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/react/event-loop" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/yaml" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/string" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/service-contracts" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/polyfill-intl-normalizer" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/polyfill-intl-grapheme" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/deprecation-contracts" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/config" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/var-dumper" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/console" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/dependency-injection" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/psr/container" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/polyfill-mbstring" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/filesystem" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/symfony/polyfill-ctype" />
+      <path value="$PROJECT_DIR$/../../../sonicGamePhp/vendor/evenement/evenement" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/composer" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/psr/container" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/react/event-loop" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/evenement/evenement" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/polyfill-intl-grapheme" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/string" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/config" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/polyfill-intl-normalizer" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/filesystem" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/deprecation-contracts" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/polyfill-ctype" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/polyfill-mbstring" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/dependency-injection" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/var-dumper" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/yaml" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/console" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/service-contracts" />
+      <path value="$PROJECT_DIR$/demo/src/src/vendor/symfony/var-exporter" />
+      <path value="$PROJECT_DIR$/demo/src/vendor/composer" />
+    </include_path>
+  </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="8.3">
     <option name="suggestChangeDefaultLanguageLevel" value="false" />
   </component>
