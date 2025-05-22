@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/php-wasm.iml" filepath="$PROJECT_DIR$/.idea/php-wasm.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../../sonicGamePhp/.idea/sonicPdo.iml" filepath="$PROJECT_DIR$/../../../sonicGamePhp/.idea/sonicPdo.iml" />
     </modules>
   </component>
 </project>
