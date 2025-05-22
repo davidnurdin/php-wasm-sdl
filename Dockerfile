@@ -60,6 +60,14 @@ RUN git clone https://github.com/kea/php-sdl-image.git && \
     mkdir -p /src/php-src/ext/sdl_image && \
 	cp -r php-sdl-image/* /src/php-src/ext/sdl_image
 
+RUN git clone https://github.com/kea/php-sdl-mixer.git && \
+    mkdir -p /src/php-src/ext/sdl_mixer && \
+	cp -r php-sdl-mixer/* /src/php-src/ext/sdl_mixer
+
+RUN git clone https://github.com/kea/php-sdl-ttf.git && \
+    mkdir -p /src/php-src/ext/sdl_ttf && \
+	cp -r php-sdl-ttf/* /src/php-src/ext/sdl_ttf
+
 # todo voir
 #RUN #git clone https://github.com/krakjoe/parallel.git /tmp/php-parallel && \
 #    mkdir -p /src/php-src/ext/parallel && \
@@ -69,6 +77,8 @@ RUN git clone https://github.com/kea/php-sdl-image.git && \
 
 COPY config.sdl /src/php-src/ext/sdl/config.m4
 COPY config-image.sdl /src/php-src/ext/sdl_image/config.m4
+COPY config-mixer.sdl /src/php-src/ext/sdl_mixer/config.m4
+COPY config-ttf.sdl /src/php-src/ext/sdl_ttf/config.m4
 
 
 
@@ -140,6 +150,8 @@ RUN --mount=type=cache,target=/emsdk/upstream/emscripten/cache cd /src/php-src &
 		--with-layout=GNU  \
     	--enable-sdl 	   \
     	--with-sdl_image \
+    	--enable-sdl_ttf \
+    	--with-sdl_mixer \
 #		--with-libxml      \
     	--enable-gd \
     	--with-png \
@@ -197,7 +209,10 @@ RUN --mount=type=cache,target=/emsdk/upstream/emscripten/cache mkdir /build && c
     -s USE_LIBPNG=1 \
 #    -s USE_LIBJPEG=1 \
     -s USE_SDL_IMAGE=2 \
+    -s USE_SDL_MIXER=2 \
+    -s USE_SDL_TTF=2 \
     -s SDL2_IMAGE_FORMATS='["bmp", "png","jpg"]' \
+    -s SDL2_MIXER_FORMATS='["ogg", "wav", "mp3"]' \
 	-s FORCE_FILESYSTEM=1            \
 	-s MAXIMUM_MEMORY=2gb             \
 	-s INITIAL_MEMORY=$INITIAL_MEMORY \

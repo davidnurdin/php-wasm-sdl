@@ -2,6 +2,12 @@
 
 #docker buildx bake
 
+rm ./demo/src/src/assets/tileset/levels/tileset*-*.*
+cd demo/src/src/
+git pull ;
+cd ../../../ ;
+
+
 docker buildx create --name wasm-builder --driver docker-container --use
 docker buildx use wasm-builder
 docker buildx bake --progress=plain
