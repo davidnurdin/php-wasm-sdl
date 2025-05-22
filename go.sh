@@ -32,6 +32,8 @@ docker run \
       --export-name=createPhpModule
 
 sed '/--pre-js/r demo/public/php-web.data.js' demo/public/php-web.mjs > this-has-preloaded-data-php-web.mjs ; mv this-has-preloaded-data-php-web.mjs demo/public/php-web.mjs
+sed '/Module\["preInit"\]\.pop()()}}run();/r demo/public/php-web.data.js' demo/public/php-web.mjs > this-has-preloaded-data-php-web.mjs && mv this-has-preloaded-data-php-web.mjs demo/public/php-web.mjs
+
 
 docker buildx use default
 php -S 0.0.0.0:80 -t demo/public

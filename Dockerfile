@@ -88,8 +88,8 @@ ARG JAVASCRIPT_EXTENSION=mjs
 ARG EXPORT_NAME=createPhpModule
 ARG MODULARIZE=1
 ARG EXPORT_ES6=1
-ARG ASSERTIONS=1
-ARG OPTIMIZE=-Os
+ARG ASSERTIONS=0
+ARG OPTIMIZE=-O3
 # -Os -O0
 # Si on ajoute GD le binaire grossis "trop" (avec O1 en optimisation)
 # Si on a O3 c'est trop optimisé et il arrive pas a injecter les fichier dans le wasm
