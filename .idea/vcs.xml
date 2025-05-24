@@ -2,12 +2,12 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../../../sonicGamePhp" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../../../sonicGamePhp/php-mixer" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../../../sonicGamePhp/php-sdl" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../../../sonicGamePhp/php-sdl-image" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../../../sonicGamePhp/php-sdl-mixer" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../../../sonicGamePhp/php-sdl-ttf" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/demo/src/src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/demo/src/src/php-sdl" vcs="Git" />
   </component>
 </project>

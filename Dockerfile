@@ -49,8 +49,8 @@ RUN git clone https://github.com/php/php-src.git php-src \
 		--depth 1
 
 
-RUN git clone https://github.com/Ponup/php-sdl.git /tmp/php-sdl && \
-    mkdir -p /src/php-src/ext/sdl && \
+RUN git clone https://github.com/davidnurdin/php-sdl.git /tmp/php-sdl && \
+    mkdir -p /src/php-src/ext/sdl && echo "1" && \
     cp -r /tmp/php-sdl/* /src/php-src/ext/sdl && \
 	cp -r /src/php-src/ext/sdl/src/* /src/php-src/ext/sdl/ && \
     find /src/php-src/ext/sdl/ -type f ! \( -name '*.c' -o -name '*.h' -o -name 'config.m4' \) -delete
