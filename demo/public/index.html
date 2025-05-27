@@ -24,9 +24,9 @@
 	function sdl_update_events($app)
 	{
 		// maximum speed (we stop sdl) !
-		$app->game->disableSdl = true ;
-		$app->game->gameLoop->start(1);
-		$app->game->disableSdl = false ;
+		// $app->game->disableSdl = true ;
+		//  $app->game->gameLoop->start(1);
+		//  $app->game->disableSdl = false ;
 	}
 
 	// utilise animatedRequest
@@ -35,7 +35,7 @@
 		if ($app->game->sdl->renderer->getRenderer() == null)
 			return ;
 
-		$app->game->disableSdl = false ;
+		//  $app->game->disableSdl = false ;
 		$app->game->gameLoop->start(1);
 	}
 
