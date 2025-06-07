@@ -50,7 +50,7 @@ RUN git clone https://github.com/php/php-src.git php-src \
 
 
 RUN git clone https://github.com/davidnurdin/php-sdl.git /tmp/php-sdl && \
-    mkdir -p /src/php-src/ext/sdl && echo "1" && \
+    mkdir -p /src/php-src/ext/sdl && echo "2" && \
     cp -r /tmp/php-sdl/* /src/php-src/ext/sdl && \
 	cp -r /src/php-src/ext/sdl/src/* /src/php-src/ext/sdl/ && \
     find /src/php-src/ext/sdl/ -type f ! \( -name '*.c' -o -name '*.h' -o -name 'config.m4' \) -delete
@@ -67,6 +67,12 @@ RUN git clone https://github.com/kea/php-sdl-mixer.git && \
 RUN git clone https://github.com/kea/php-sdl-ttf.git && \
     mkdir -p /src/php-src/ext/sdl_ttf && \
 	cp -r php-sdl-ttf/* /src/php-src/ext/sdl_ttf
+
+#RUN #git clone https://github.com/seanmorris/vrzno && \
+#	mkdir -p /src/php-src/ext/vrzno && \
+#	cp -r vrzno/* /src/php-src/ext/vrzno
+
+# ok
 
 # todo voir
 #RUN #git clone https://github.com/krakjoe/parallel.git /tmp/php-parallel && \
@@ -141,6 +147,7 @@ ENV PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig/"
 ## debug : sudo runc exec -t $(sudo runc list | awk '$3 == "running" {print $1; exit}') /bin/bash
 #RUN echo "pause here" && sleep infinity
 
+# -Wno-int-conversion
 # -s USE_LIBJPEG=1
 RUN --mount=type=cache,target=/emsdk/upstream/emscripten/cache cd /src/php-src && export PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig/' && ./buildconf --force \
     && emconfigure ./configure \
@@ -148,6 +155,7 @@ RUN --mount=type=cache,target=/emsdk/upstream/emscripten/cache cd /src/php-src &
     	PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig/'  \
 		--enable-embed=static \
 		--with-layout=GNU  \
+#    	--enable-vrzno \
     	--enable-sdl 	   \
     	--with-sdl_image \
     	--enable-sdl_ttf \
