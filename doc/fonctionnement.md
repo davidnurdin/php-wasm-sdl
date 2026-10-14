@@ -165,6 +165,56 @@ envoyez l'événement `sonic:ready`) à l'endroit voulu.
 La console affiche les temps de chaque étape : `[boot] wasm téléchargé`, `runtime prêt`,
 `sauvegardes restaurées`, `PHP démarré`, `première frame`.
 
+## Mobile et tablette (`mobile.js`)
+
+`mobile.js` est inclus juste après `loader.js`, **avant** le lancement du wasm : la classe
+`html.is-mobile` doit donner sa taille au canvas avant que SDL crée sa fenêtre. Détection : écran
+tactile + pointeur grossier ou user-agent mobile (iPadOS se déclare « Mac » : on regarde
+`maxTouchPoints`). Pour forcer le mode : `?mobile=1` ou `?mobile=0` dans l'URL.
+
+Uniquement en mode mobile :
+
+- le canvas occupe tout l'écran (`100vw × 100dvh`), le texte et la zone de debug sont masqués, le zoom
+  par pincement et le défilement sont bloqués ;
+- **vue Master System** : le code PHP de la page reçoit `define('SONIC_MOBILE', true)` (préfixé par le
+  JS) et active `Game::$smsView` (vue 256×192 agrandie à l'écran, comme la touche `*` du pavé
+  numérique) avec une closure liée : `(fn() => $this->smsView = true)->call($app->game)` ;
+- quand le jeu est prêt (`SonicMobile.start()`), l'écran **« TOUCHE POUR JOUER »** s'affiche : le
+  navigateur n'accorde le plein écran qu'en réponse à un geste. Au toucher : `requestFullscreen()`
+  puis `screen.orientation.lock('landscape')`. Si on quitte le plein écran, l'écran revient ;
+- si le verrouillage en paysage est impossible et que l'appareil est en portrait :
+  **« TOURNE TON APPAREIL »**.
+
+| Plateforme | Plein écran | Verrouillage paysage |
+|---|---|---|
+| Android (Chrome, Firefox, Samsung Internet) | oui | oui (une fois en plein écran) |
+| iPad (Safari) | oui (`webkitRequestFullscreen`) | non : écran « tourne ton appareil » |
+| iPhone (Safari) | non (API absente) : la page occupe l'écran ; via « Sur l'écran d'accueil », l'app s'ouvre sans barre | non : écran « tourne ton appareil » |
+
+Le `manifest.webmanifest` (`display: fullscreen`, `orientation: landscape`) fait que le jeu, ajouté à
+l'écran d'accueil sur Android, s'ouvre directement en plein écran et en paysage.
+
+### Commandes tactiles
+
+Elles sont gérées en PHP par `InputTouchpad` (événements `SDL_FINGER*` du port emscripten de SDL2) :
+
+| Où | Geste | Effet |
+|---|---|---|
+| Menus, démo, saisie du nom | tap | Entrée (valider / passer la démo) |
+| | glisser haut / bas / gauche / droite | flèche correspondante (une case par glissé, relever le doigt entre deux) |
+| En jeu | glisser à gauche / à droite et maintenir | courir |
+| | tap | sauter |
+| | 2e doigt glissé vers le bas | rouler |
+
+Les menus passent par `patches/game/20-touch-menus.patch` (voir compilation.md).
+
+## Balises de la page
+
+`index.html` contient : titre et description, Open Graph / Twitter (`assets/og-image.png`, 1200×630),
+`theme-color`, balises d'application web Android / iOS (`mobile-web-app-capable`,
+`apple-mobile-web-app-*`, `apple-touch-icon`), le manifest, et des données structurées schema.org
+`VideoGame` (plateformes : navigateur, ordinateur, Android, iPhone, iPad).
+
 ## Particularités du PHP wasm
 
 - **Entiers 32 bits** (`PHP_INT_MAX = 2147483647`, `PHP_INT_SIZE = 4`) : wasm32. Voir le patch

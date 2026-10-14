@@ -3,12 +3,71 @@
 <html lang="fr">
 <head>
 	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>Sonic</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+	<!-- taille réelle de php-web.wasm, écrite par package.sh (Content-Length ne convient pas si le
+	     serveur compresse en gzip, comme GitHub Pages) -->
+	<meta name="php-wasm-size" content="10555932" />
+
+	<title>Sonic en PHP : jouable dans le navigateur (PHP + SDL en WebAssembly)</title>
+	<meta name="description" content="Sonic the Hedgehog (Master System) réécrit en PHP pur et compilé en WebAssembly avec SDL2 : jouable dans le navigateur sur ordinateur, mobile et tablette (Android, iPhone, iPad). Projet open source." />
+	<meta name="keywords" content="Sonic, PHP, WebAssembly, wasm, SDL2, emscripten, jeu, navigateur, mobile, Android, iPhone, iPad, Master System, open source" />
+	<meta name="author" content="David Nurdin" />
+	<link rel="canonical" href="https://davidnurdin.github.io/php-wasm-sdl/" />
+
+	<!-- Partage (Open Graph / Twitter) -->
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content="php-wasm-sdl" />
+	<meta property="og:locale" content="fr_FR" />
+	<meta property="og:title" content="Sonic en PHP : jouable dans le navigateur" />
+	<meta property="og:description" content="Un jeu Sonic écrit en PHP, qui tourne dans le navigateur grâce à PHP + SDL2 compilés en WebAssembly. Ordinateur, Android, iPhone, iPad." />
+	<meta property="og:url" content="https://davidnurdin.github.io/php-wasm-sdl/" />
+	<meta property="og:image" content="https://davidnurdin.github.io/php-wasm-sdl/assets/og-image.png" />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:image:alt" content="Écran titre de Sonic qui tourne en PHP dans le navigateur" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content="Sonic en PHP : jouable dans le navigateur" />
+	<meta name="twitter:description" content="PHP + SDL2 en WebAssembly : Sonic jouable sur ordinateur, Android et iPhone." />
+	<meta name="twitter:image" content="https://davidnurdin.github.io/php-wasm-sdl/assets/og-image.png" />
+
+	<!-- Application web mobile (écran d'accueil Android / iOS : plein écran, paysage via le manifest) -->
+	<link rel="manifest" href="manifest.webmanifest" />
+	<meta name="theme-color" content="#0b3fae" />
+	<meta name="mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+	<meta name="apple-mobile-web-app-title" content="Sonic PHP" />
+	<meta name="application-name" content="Sonic PHP" />
+	<meta name="format-detection" content="telephone=no" />
+	<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
+	<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+
+	<!-- Données structurées : jeu vidéo jouable dans le navigateur -->
+	<script type="application/ld+json">
+	{
+		"@context": "https://schema.org",
+		"@type": "VideoGame",
+		"name": "Sonic en PHP",
+		"description": "Sonic the Hedgehog (Master System) réécrit en PHP, exécuté dans le navigateur avec PHP et SDL2 compilés en WebAssembly.",
+		"url": "https://davidnurdin.github.io/php-wasm-sdl/",
+		"image": "https://davidnurdin.github.io/php-wasm-sdl/assets/og-image.png",
+		"genre": "Plateforme",
+		"inLanguage": "fr",
+		"playMode": "SinglePlayer",
+		"gamePlatform": ["Navigateur web", "Ordinateur", "Android", "iPhone", "iPad"],
+		"operatingSystem": "Windows, macOS, Linux, Android, iOS",
+		"applicationCategory": "Game",
+		"author": { "@type": "Person", "name": "David Nurdin" },
+		"codeRepository": "https://github.com/davidnurdin/php-wasm-sdl",
+		"isAccessibleForFree": true
+	}
+	</script>
 </head>
 <body>
 <!-- Loader façon Sonic : visible tant que le wasm n'est pas prêt (API : window.SonicLoader, cf. loader.js) -->
 <script src="loader.js"></script>
+<!-- Mobile / tablette : plein écran, paysage, sans debug (API : window.SonicMobile, cf. mobile.js) -->
+<script src="mobile.js"></script>
 <style>
 	/* Le jeu crée sa fenêtre avec SDL_WINDOW_RESIZABLE : le port emscripten de SDL2 prend alors la
 	   taille CSS du canvas comme taille de fenêtre (pas de zoom CSS, sinon SDL lit une taille faussée
@@ -56,6 +115,12 @@
 
 	$app = include ('/src/src/app.php');
 
+	// Mobile / tablette : écran 256x192 de la Master System par défaut (agrandi à l'écran) au lieu de la
+	// vue automatique ~426 px de haut, trop petite sur un téléphone. smsView est privé : closure liée.
+	if (defined('SONIC_MOBILE') && SONIC_MOBILE) {
+		(fn() => $this->smsView = true)->call($app->game);
+	}
+
 </textarea>
 <br>
 Array Keys , => Camera control : 2 8 6 4 and 5 to recenter , F3 F4 change level ! (dont touch other)
@@ -86,7 +151,11 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 	async function fetchWithProgress(url, onProgress) {
 		const response = await fetch(url);
 		if (!response.ok) throw new Error(`${url} : HTTP ${response.status}`);
-		const total = Number(response.headers.get('Content-Length')) || 0;
+		// fetch compte les octets décompressés : Content-Length (taille compressée) n'est fiable que
+		// sans Content-Encoding ; sinon on prend la taille écrite par package.sh
+		const compressed = !!response.headers.get('Content-Encoding');
+		const total = Number(document.querySelector('meta[name="php-wasm-size"]')?.content)
+			|| (compressed ? 0 : Number(response.headers.get('Content-Length')) || 0);
 		if (!response.body || !total) return response.arrayBuffer();
 		const reader = response.body.getReader();
 		const chunks = [];
@@ -171,7 +240,8 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 		await nextFrame();
 
 		window.run = () => {
-			ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
+			const prelude = `define('SONIC_MOBILE', ${window.SonicMobile.isMobile ? 'true' : 'false'});\n`;
+			ccall("phpw_run", "void", ["string"], [prelude + document.getElementById('php').value]);
 		};
 		try {
 			run();
@@ -195,6 +265,7 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 		timing('première frame');
 		loader.hide();
 		document.getElementById('canvas').focus();
+		window.SonicMobile.start(); // mobile : écran "touche pour jouer" (plein écran + paysage)
 	}
 
 	main().catch((e) => {

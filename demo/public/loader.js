@@ -86,6 +86,14 @@
 	font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; min-height: 1.3em;
 	text-shadow: 1px 1px 0 #000; opacity: .9;
 }
+#sonic-loader .sl-source {
+	position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 1;
+	max-width: calc(100% - 24px); box-sizing: border-box; text-align: center;
+	font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: #fff;
+	background: rgba(0, 0, 40, .7); border: 2px solid #fff; border-radius: 6px; padding: 6px 12px;
+	box-shadow: 3px 3px 0 #000;
+}
+#sonic-loader .sl-source a { color: var(--ring); font-weight: bold; text-decoration: underline; word-break: break-all; }
 #sonic-loader.sl-error .sl-title { color: #ff4040; }
 #sonic-loader.sl-error .sl-ring { animation: none; filter: grayscale(1); }
 #sonic-loader.sl-error .sl-fill { background: #ff4040; animation: none; }
@@ -115,6 +123,7 @@
 			<div class="sl-bar"><div class="sl-fill"></div></div>
 			<div class="sl-status">Initialisation...</div>
 		</div>
+		<div class="sl-source">Open source project : <a href="https://github.com/davidnurdin/php-wasm-sdl/" target="_blank" rel="noopener">https://github.com/davidnurdin/php-wasm-sdl/</a></div>
 		<div class="sl-ground"></div>`;
 
 	const mount = () => document.body.appendChild(root);
@@ -134,7 +143,7 @@
 			if (label) api.status(label);
 		},
 		status(text) { $('.sl-status').textContent = text; },
-		step(from, to) { return (ratio) => api.progress(from + (to - from) * ratio); },
+		step(from, to) { return (ratio) => api.progress(from + (to - from) * Math.min(1, Math.max(0, ratio))); },
 		hide() {
 			if (root.classList.contains('sl-hidden')) return;
 			api.progress(1);

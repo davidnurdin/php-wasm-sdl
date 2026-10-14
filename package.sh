@@ -43,6 +43,9 @@ grep -q "$MARKER" "$OUT/php-web.mjs" || { echo "ERREUR: marqueur d'injection int
 sed "/$MARKER/r $OUT/php-web.data.js" "$OUT/php-web.mjs" > "$OUT/php-web.mjs.tmp"
 mv "$OUT/php-web.mjs.tmp" "$OUT/php-web.mjs"
 
+# taille réelle du wasm pour la barre de progression (le serveur peut le servir compressé)
+sed -i -E "s|(<meta name=\"php-wasm-size\" content=\")[0-9]*(\")|\1$(stat -c %s "$OUT/php-web.wasm")\2|" "$OUT/index.html"
+
 # police Sonic du loader (loader.js), servie hors du FS wasm car affichée avant son chargement
 mkdir -p "$OUT/assets"
 FONT="$ROOT/demo/src/src/assets/fonts/NiseSegaSonic.TTF"
@@ -53,6 +56,6 @@ ls -la "$OUT"/php-web.*
 if [ "${1:-}" = "--deploy" ]; then
   echo "==> copie vers la racine du repo (GitHub Pages)"
   cp "$OUT/php-web.mjs" "$OUT/php-web.wasm" "$OUT/php-web.data" "$OUT/php-web.data.js" \
-     "$OUT/index.html" "$OUT/loader.js" "$ROOT/"
+     "$OUT/index.html" "$OUT/loader.js" "$OUT/mobile.js" "$OUT/manifest.webmanifest" "$ROOT/"
   mkdir -p "$ROOT/assets" && cp -r "$OUT/assets/." "$ROOT/assets/"
 fi
