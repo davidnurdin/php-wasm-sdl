@@ -56,6 +56,6 @@ ls -la "$OUT"/php-web.*
 if [ "${1:-}" = "--deploy" ]; then
   echo "==> copie vers la racine du repo (GitHub Pages)"
   cp "$OUT/php-web.mjs" "$OUT/php-web.wasm" "$OUT/php-web.data" "$OUT/php-web.data.js" \
-     "$OUT/index.html" "$OUT/loader.js" "$OUT/mobile.js" "$OUT/manifest.webmanifest" "$ROOT/"
+     "$OUT/index.html" "$OUT/loader.js" "$OUT/mobile.js" "$OUT/controls.js" "$OUT/manifest.webmanifest" "$ROOT/"
   mkdir -p "$ROOT/assets" && cp -r "$OUT/assets/." "$ROOT/assets/"
 fi

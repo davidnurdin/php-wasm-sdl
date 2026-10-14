@@ -6,8 +6,8 @@
  *   - si on sort du plein écran, l'écran revient pour le relancer ;
  *   - en portrait sans verrouillage possible (iPhone : ni Fullscreen API ni orientation.lock),
  *     écran "TOURNE TON APPAREIL".
- * Les gestes dans le jeu (tap = Entrée dans les menus / saut en jeu, glisser = directions) sont gérés
- * en PHP par InputTouchpad (+ patches/game/20-touch-menus.patch) à partir des événements SDL_FINGER*.
+ * Les gestes dans le jeu (glisser = directions, tap / bouton A = Espace) sont convertis en événements
+ * clavier par controls.js.
  *
  * À inclure en <script> classique juste après loader.js, AVANT le lancement du wasm : la classe
  * html.is-mobile doit donner sa taille au canvas avant que SDL crée sa fenêtre.
@@ -37,7 +37,7 @@ html.is-mobile, html.is-mobile body {
 	-webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
 }
 /* seuls le canvas, le loader et les écrans mobiles restent visibles */
-html.is-mobile body > :not(#canvas):not(#sonic-loader):not(.sm-screen) { display: none !important; }
+html.is-mobile body > :not(#canvas):not(#sonic-loader):not(.sm-screen):not(.sm-keep) { display: none !important; }
 html.is-mobile #canvas {
 	position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh;
 	aspect-ratio: auto; margin: 0; touch-action: none;

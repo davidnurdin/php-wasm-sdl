@@ -176,9 +176,11 @@ Uniquement en mode mobile :
 
 - le canvas occupe tout l'écran (`100vw × 100dvh`), le texte et la zone de debug sont masqués, le zoom
   par pincement et le défilement sont bloqués ;
-- **vue Master System** : le code PHP de la page reçoit `define('SONIC_MOBILE', true)` (préfixé par le
-  JS) et active `Game::$smsView` (vue 256×192 agrandie à l'écran, comme la touche `*` du pavé
-  numérique) avec une closure liée : `(fn() => $this->smsView = true)->call($app->game)` ;
+- **vue ~192 px de haut, pleine largeur** : le code PHP de la page reçoit `define('SONIC_MOBILE', true)`
+  (préfixé par le JS) et fait `$app->game->viewHeight = 192` (au lieu de 426, propriété ajoutée par
+  `patches/game/30-view-height-fps.patch`). Le zoom automatique vise cette hauteur (gros sprites, comme
+  sur Master System) et la vue garde le ratio de l'écran : des tuiles jusqu'aux bords, pas de bandes
+  noires. Les touches `+` / `-` / `*` du pavé numérique restent utilisables ;
 - quand le jeu est prêt (`SonicMobile.start()`), l'écran **« TOUCHE POUR JOUER »** s'affiche : le
   navigateur n'accorde le plein écran qu'en réponse à un geste. Au toucher : `requestFullscreen()`
   puis `screen.orientation.lock('landscape')`. Si on quitte le plein écran, l'écran revient ;
@@ -194,19 +196,30 @@ Uniquement en mode mobile :
 Le `manifest.webmanifest` (`display: fullscreen`, `orientation: landscape`) fait que le jeu, ajouté à
 l'écran d'accueil sur Android, s'ouvre directement en plein écran et en paysage.
 
-### Commandes tactiles
+### Commandes à l'écran (`controls.js`)
 
-Elles sont gérées en PHP par `InputTouchpad` (événements `SDL_FINGER*` du port emscripten de SDL2) :
+Les gestes et les boutons sont convertis **en vrais événements clavier** (`KeyboardEvent` avec
+`keyCode`, envoyés au canvas) : SDL les reçoit comme une touche réelle et le jeu applique exactement sa
+logique clavier (saut à hauteur variable, roulade, menus, saisie du nom), sans aucun code tactile côté
+PHP. Une couche transparente couvre le canvas en mode mobile : les événements tactiles n'atteignent plus
+SDL (`InputTouchpad` ne sert plus dans le navigateur).
 
-| Où | Geste | Effet |
+| Geste | Touche | Effet |
 |---|---|---|
-| Menus, démo, saisie du nom | tap | Entrée (valider / passer la démo) |
-| | glisser haut / bas / gauche / droite | flèche correspondante (une case par glissé, relever le doigt entre deux) |
-| En jeu | glisser à gauche / à droite et maintenir | courir |
-| | tap | sauter |
-| | 2e doigt glissé vers le bas | rouler |
+| glisser gauche / droite (≈ 12 px suffisent) et garder le doigt posé | ← / → | courir (choix dans les menus) |
+| glisser bas / haut | ↓ / ↑ | rouler ou s'accroupir / regarder en haut (navigation dans les menus) |
+| tap | Espace | sauter, valider dans les menus, passer la démo |
+| bouton **A** (bas droite) ou 2e doigt n'importe où | Espace maintenu | saut immédiat, plus haut si on reste appuyé |
 
-Les menus passent par `patches/game/20-touch-menus.patch` (voir compilation.md).
+La croix est « flottante » : son centre est l'endroit où le doigt se pose, et il suit le doigt au-delà
+de 24 px. Repartir dans l'autre sens ne demande donc que ~36 px, quelle que soit la longueur du glissé
+précédent. Un axe n'est pris en compte que s'il n'est pas dominé par l'autre (un glissé vers le bas
+dans un menu ne déclenche pas → en plus). Un petit cercle montre le centre et la position du doigt.
+
+**Pad de debug** (ordinateur : sous le canvas ; mobile : bouton **DEBUG** en haut à droite) : boutons
+8 4 6 2 (caméra libre, maintenus = déplacement continu), 5 (Sonic suit la caméra), F3 / F4 (niveau
+précédent / suivant), F6 (panneau coordonnées + **FPS**). Utile aussi sur un portable sans pavé
+numérique. Depuis la console : `SonicControls.key('f6', true)` puis `SonicControls.key('f6', false)`.
 
 ## Balises de la page
 

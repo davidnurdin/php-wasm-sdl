@@ -1,0 +1,60 @@
+--- a/src/Game.php	2026-10-15 00:40:58.109290769 +0200
++++ b/src/Game.php	2026-10-15 00:41:06.101417254 +0200
+@@ -44,6 +44,10 @@
+     private const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4, 5, 6, 8];
+     private const DEFAULT_VIEW_HEIGHT = 426;
+     private int $zoomOffset = 0;
++    /** Height (px) the automatic zoom aims at: DEFAULT_VIEW_HEIGHT, ~192 on a phone (bigger sprites, full width). */
++    public int $viewHeight = self::DEFAULT_VIEW_HEIGHT;
++    /** Frames of the last second, shown in the F6 panel. */
++    private int $fpsShown = 0;
+     private bool $smsView = false;
+ 
+     /** F6: panel with Sonic's coordinates over the screen (to report bugs). */
+@@ -439,6 +443,7 @@
+         $level = $this->levelManager->getCurrentLevel()->getLevel();
+         $best = $this->ghost->bestTime($level);
+         $lines = [
++            'FPS ' . $this->fpsShown,
+             'NIVEAU ' . $level,
+             'X ' . $x . '   Y ' . $y,
+             sprintf('BLOC %d,%d  (%02X,%02X)', intdiv($x, 32), intdiv($y, 32), intdiv($x, 32), intdiv($y, 32)),
+@@ -452,7 +457,7 @@
+         $width = max(array_map(fn($l) => $this->text->width($l, $size), $lines));
+         $this->text->panel(8, 8, $width + $size * 2, count($lines) * $line + $size);
+         foreach ($lines as $i => $text) {
+-            $this->text->draw($text, 8 + $size, 8 + (int)($size / 2) + $i * $line, $size, $i === 1 ? [255, 255, 0] : [255, 255, 255]);
++            $this->text->draw($text, 8 + $size, 8 + (int)($size / 2) + $i * $line, $size, $i === 2 ? [255, 255, 0] : [255, 255, 255]);
+         }
+     }
+ 
+@@ -554,6 +559,7 @@
+         $this->gameLoop->addPeriodicTimer(1, function (TimerInterface $timer) use (&$vars) {
+             $deltaMoyen = $vars['fps'] > 0 ? $vars['deltaSum'] / $vars['fps'] : 0;
+             echo sprintf("FPS réel : %d | Δ moyen : %.3f ms", $vars['fps'], $deltaMoyen * 1000) . PHP_EOL;
++            $this->fpsShown = $vars['fps'];
+             $vars['fps'] = 0;
+             $vars['deltaSum'] = 0.0;
+         });
+@@ -1043,10 +1049,10 @@
+     {
+         if ($this->smsView) {
+             $this->smsView = false;   // leave the 256x192 screen at the zoom it looks like
+-            $this->zoomOffset = $this->zoomIndexFor($this->outputHeight() / 192) - $this->zoomIndexFor($this->outputHeight() / self::DEFAULT_VIEW_HEIGHT);
++            $this->zoomOffset = $this->zoomIndexFor($this->outputHeight() / 192) - $this->zoomIndexFor($this->outputHeight() / $this->viewHeight);
+             return;
+         }
+-        $auto = $this->zoomIndexFor($this->outputHeight() / self::DEFAULT_VIEW_HEIGHT);
++        $auto = $this->zoomIndexFor($this->outputHeight() / $this->viewHeight);
+         $this->zoomOffset = max(-$auto, min(count(self::ZOOMS) - 1 - $auto, $this->zoomOffset + $step));
+     }
+ 
+@@ -1080,7 +1086,7 @@
+         if ($this->smsView) {
+             [$viewW, $viewH] = [256, 192];
+         } else {
+-            $auto = $this->zoomIndexFor($height / self::DEFAULT_VIEW_HEIGHT);
++            $auto = $this->zoomIndexFor($height / $this->viewHeight);
+             $index = max(0, min(count(self::ZOOMS) - 1, $auto + $this->zoomOffset));
+             $zoom = self::ZOOMS[$index];
+             [$viewW, $viewH] = [(int)round($width / $zoom), (int)round($height / $zoom)];

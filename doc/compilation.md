@@ -113,10 +113,10 @@ en `-O0` le marqueur d'injection change (c'est alors le commentaire `--pre-js` q
 | Patch | Pourquoi |
 |---|---|
 | `10-int32-microtime.sh` | PHP wasm32 a des entiers **32 bits**. `(int)floor(microtime(true) * 60)` ≈ 1,07·10¹¹ déborde (modulo 2³²) et donne des index négatifs : `tileset1-cycle-1` introuvable, puis TypeError dans `SDL_RenderCopyEx`. Le script remplace `microtime(true)` par `fmod(microtime(true), 86400.0)` dans les conversions `(int)` |
-| `20-touch-menus.patch` | Les menus, la démo et la saisie du nom (records) ne lisent que le clavier. Avec `InputTouchpad` : un tap = Entrée, un glissé = la flèche de sa direction (une case par glissé). En jeu, rien ne change (tap = saut, glisser maintenu = direction) ; Sonic ne bouge plus quand on touche l'écran dans un menu |
+| `30-view-height-fps.patch` | `Game::$viewHeight` (public, 426 par défaut) : hauteur visée par le zoom automatique ; la page la met à 192 sur mobile (vue pleine largeur sans bandes noires). Ajoute aussi la ligne **FPS** en tête du panneau F6 |
 
 Les autres adaptations wasm sont dans `demo/public/index.html` (pas besoin de toucher au jeu) :
-neutralisation de `Loop::run()`, taille CSS du canvas, sauvegardes, mode mobile (vue Master System).
+neutralisation de `Loop::run()`, taille CSS du canvas, sauvegardes, mode mobile (vue 192 px de haut). Le tactile et le pad de debug sont dans `controls.js`.
 Voir fonctionnement.md.
 
 ### Contrôler une nouvelle version du jeu
@@ -144,7 +144,7 @@ affiche les erreurs PHP. Causes habituelles :
 4. copie la police du jeu (`NiseSegaSonic.TTF`) dans `demo/public/assets/` pour le loader ;
 5. écrit la taille réelle de `php-web.wasm` dans `<meta name="php-wasm-size">` d'`index.html` (barre de
    progression juste même si le serveur compresse le wasm en gzip, comme GitHub Pages) ;
-6. `--deploy` : copie `index.html`, `loader.js`, `mobile.js`, `manifest.webmanifest`, `php-web.*` et
+6. `--deploy` : copie `index.html`, `loader.js`, `mobile.js`, `controls.js`, `manifest.webmanifest`, `php-web.*` et
    `assets/` (police, icônes, image de partage) à la racine du repo, ce que
    publie le workflow GitHub Pages (`.github/workflows/static.yml` publie tout le repo).
 

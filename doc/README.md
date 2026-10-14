@@ -62,5 +62,6 @@ tout est compilé dans des conteneurs.
 | `demo/public/index.html` | Page de la démo : lance le wasm, code PHP de démarrage, sauvegardes |
 | `demo/public/loader.js` | Écran de chargement façon Sonic (`window.SonicLoader`) |
 | `demo/public/mobile.js` | Mode mobile / tablette : plein écran, paysage, sans debug (`window.SonicMobile`) |
+| `demo/public/controls.js` | Commandes à l'écran → vrais événements clavier : tactile (croix flottante, bouton A) et pad de debug 8 4 6 2 5 / F3 F4 F6 (`window.SonicControls`) |
 | `demo/public/manifest.webmanifest`, `demo/public/assets/` | Application web (écran d'accueil : plein écran, paysage), icônes, image de partage, police du loader |
 | `go.sh` | Ancien script tout-en-un (historique, remplacé par les scripts ci-dessus) |

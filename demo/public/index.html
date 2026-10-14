@@ -68,6 +68,8 @@
 <script src="loader.js"></script>
 <!-- Mobile / tablette : plein écran, paysage, sans debug (API : window.SonicMobile, cf. mobile.js) -->
 <script src="mobile.js"></script>
+<!-- Commandes à l'écran -> vrais événements clavier : tactile (mobile) + pad de debug (API : window.SonicControls, cf. controls.js) -->
+<script src="controls.js"></script>
 <style>
 	/* Le jeu crée sa fenêtre avec SDL_WINDOW_RESIZABLE : le port emscripten de SDL2 prend alors la
 	   taille CSS du canvas comme taille de fenêtre (pas de zoom CSS, sinon SDL lit une taille faussée
@@ -115,15 +117,16 @@
 
 	$app = include ('/src/src/app.php');
 
-	// Mobile / tablette : écran 256x192 de la Master System par défaut (agrandi à l'écran) au lieu de la
-	// vue automatique ~426 px de haut, trop petite sur un téléphone. smsView est privé : closure liée.
+	// Mobile / tablette : vue d'environ 192 px de haut (hauteur de la Master System, gros sprites) au lieu
+	// de ~426 px, et aussi large que l'écran : des tuiles jusqu'aux bords, pas de bandes noires.
+	// (Game::$viewHeight vient de patches/game/30-view-height-fps.patch)
 	if (defined('SONIC_MOBILE') && SONIC_MOBILE) {
-		(fn() => $this->smsView = true)->call($app->game);
+		$app->game->viewHeight = 192;
 	}
 
 </textarea>
 <br>
-Array Keys , => Camera control : 2 8 6 4 and 5 to recenter , F3 F4 change level ! (dont touch other)
+Flèches + Espace pour jouer. Debug : pavé numérique 8 4 6 2 = caméra libre, 5 = Sonic suit la caméra, F3 / F4 = niveau précédent / suivant, F6 = infos + FPS (ou les boutons ci-dessus).
 Source here : <a href="https://github.com/davidnurdin/php-wasm-sdl/">https://github.com/davidnurdin/php-wasm-sdl/</a>
 And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php source</a>
 <br>
@@ -266,6 +269,7 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 		loader.hide();
 		document.getElementById('canvas').focus();
 		window.SonicMobile.start(); // mobile : écran "touche pour jouer" (plein écran + paysage)
+		window.SonicControls.start(); // mobile : couche tactile + bouton DEBUG
 	}
 
 	main().catch((e) => {
