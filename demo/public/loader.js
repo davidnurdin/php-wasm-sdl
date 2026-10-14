@@ -87,13 +87,13 @@
 	text-shadow: 1px 1px 0 #000; opacity: .9;
 }
 #sonic-loader .sl-source {
-	position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 1;
+	position: absolute; left: 12px; right: 12px; bottom: 14px; z-index: 1; width: fit-content; margin: 0 auto;
 	max-width: calc(100% - 24px); box-sizing: border-box; text-align: center;
 	font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: #fff;
 	background: rgba(0, 0, 40, .7); border: 2px solid #fff; border-radius: 6px; padding: 6px 12px;
 	box-shadow: 3px 3px 0 #000;
 }
-#sonic-loader .sl-source a { color: var(--ring); font-weight: bold; text-decoration: underline; word-break: break-all; }
+#sonic-loader .sl-source a { color: var(--ring); font-weight: bold; text-decoration: underline; overflow-wrap: anywhere; }
 #sonic-loader.sl-error .sl-title { color: #ff4040; }
 #sonic-loader.sl-error .sl-ring { animation: none; filter: grayscale(1); }
 #sonic-loader.sl-error .sl-fill { background: #ff4040; animation: none; }
