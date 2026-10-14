@@ -182,6 +182,7 @@ RUN --mount=type=cache,target=/emsdk/upstream/emscripten/cache cd /src/php-src &
 		--enable-bcmath    \
 		--enable-ctype     \
 		--enable-mbstring  \
+		--with-zlib        \
 		--disable-mbregex  \
 		--with-config-file-scan-dir=/src/php  \
 		--enable-tokenizer

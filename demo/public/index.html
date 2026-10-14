@@ -3,16 +3,26 @@
 <html lang="fr">
 <head>
 	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<title>Sonic</title>
 </head>
 <body>
+<!-- Loader façon Sonic : visible tant que le wasm n'est pas prêt (API : window.SonicLoader, cf. loader.js) -->
+<script src="loader.js"></script>
 <style>
+	/* Le jeu crée sa fenêtre avec SDL_WINDOW_RESIZABLE : le port emscripten de SDL2 prend alors la
+	   taille CSS du canvas comme taille de fenêtre (pas de zoom CSS, sinon SDL lit une taille faussée
+	   et le canvas finit en 3x3). Le jeu met ensuite à l'échelle son rendu 840x426 avec letterbox. */
 	.canvasCss
 	{
-		zoom: 3;
+		display: block;
+		width: min(100%, calc((100vh - 60px) * 840 / 426));
+		aspect-ratio: 840 / 426;
+		margin: 0 auto;
+		background: #111;
 	}
 </style>
-<canvas class="canvasCss" id="canvas" width="1000" height="1000" style="display: block; background: #111;"></canvas>
+<canvas class="canvasCss" id="canvas" width="840" height="426" tabindex="-1"></canvas>
 
 
 <textarea id="php" style="display: none">
@@ -39,6 +49,11 @@
 		$app->game->gameLoop->start(1);
 	}
 
+	// Le jeu natif lance Loop::get()->run() (boucle infinie bloquante) : en wasm c'est phpw.c qui
+	// appelle sdl_frame()/sdl_update_events() à chaque frame. Ce futureTick arrête la boucle après
+	// son premier tick pour rendre la main au navigateur.
+	\React\EventLoop\Loop::get()->futureTick(fn() => \React\EventLoop\Loop::get()->stop());
+
 	$app = include ('/src/src/app.php');
 
 </textarea>
@@ -54,35 +69,138 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 
 <script type="module">
 	import phpBinary from "./php-web.mjs";
-	async function main() {
-		const output = document.getElementById('output')
-		const buffer = [];
-		const canvas = document.getElementById("canvas");
 
-		const { ccall, FS } = await phpBinary({
-			canvas: document.getElementById('canvas'),
-			print(data) {
-				console.log(data);
-				document.getElementById('debug').value += '[stdout]' + data + "\n" ;
-			}
-			,
-			printErr(data) {
-				console.error('[stderr]', data);
-				document.getElementById('debug').value += '[stderr]' + data + "\n" ;
-			}
+	const loader = window.SonicLoader;
+	const debug = document.getElementById('debug');
+	const lastLines = [];
+	const log = (prefix, data) => {
+		debug.value += prefix + data + "\n";
+		lastLines.push(String(data));
+		if (lastLines.length > 6) lastLines.shift();
+	};
+	const t0 = performance.now();
+	const timing = (step) => console.info(`[boot] ${step} : ${Math.round(performance.now() - t0)} ms`);
+	const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
 
-		});
-
-
-		window.FS = FS;
-		window.run = () => {
-			ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
+	// Téléchargement du .wasm avec progression (passé ensuite à emscripten via wasmBinary)
+	async function fetchWithProgress(url, onProgress) {
+		const response = await fetch(url);
+		if (!response.ok) throw new Error(`${url} : HTTP ${response.status}`);
+		const total = Number(response.headers.get('Content-Length')) || 0;
+		if (!response.body || !total) return response.arrayBuffer();
+		const reader = response.body.getReader();
+		const chunks = [];
+		let received = 0;
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			chunks.push(value);
+			received += value.length;
+			onProgress(received / total);
 		}
-		run();
-		return "ok" ;
+		const bytes = new Uint8Array(received);
+		let offset = 0;
+		for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+		return bytes.buffer;
 	}
 
-	await main();
+	async function main() {
+		// 0-40 % : moteur (.wasm)
+		loader.status('Téléchargement du moteur PHP...');
+		const wasmBinary = await fetchWithProgress('php-web.wasm', loader.step(0, 0.4));
+		timing('wasm téléchargé');
+
+		// 40-90 % : données du jeu (php-web.data, progression émise par le loader de file_packager)
+		const dataProgress = loader.step(0.4, 0.9);
+		const { ccall, FS } = await phpBinary({
+			canvas: document.getElementById('canvas'),
+			wasmBinary,
+			setStatus(text) {
+				if (!text) return;
+				const m = /\((\d+)\/(\d+)\)/.exec(text);
+				if (m) {
+					dataProgress(Number(m[1]) / Number(m[2]));
+					loader.status(`Chargement du jeu... ${(m[1] / 1048576).toFixed(1)} / ${(m[2] / 1048576).toFixed(1)} Mo`);
+				} else {
+					loader.status(text);
+				}
+			},
+			print(data) {
+				console.log(data);
+				log('[stdout]', data);
+			},
+			printErr(data) {
+				console.error('[stderr]', data);
+				log('[stderr]', data);
+			},
+			onAbort(reason) {
+				loader.error('Le wasm a planté : ' + reason);
+			},
+		});
+		window.FS = FS;
+		timing('runtime prêt (wasm compilé + données chargées)');
+
+		// Fichiers utilisateur (var/options.json, var/besttimes.json, var/ghosts/*) : /src/src/var est
+		// monté sur IndexedDB (IDBFS). Réimport avant le lancement de PHP, puis sauvegarde périodique
+		// (IDBFS ne réécrit que les fichiers modifiés) et à la fermeture/mise en arrière-plan de la page.
+		loader.progress(0.92, 'Restauration des sauvegardes...');
+		const SAVE_DIR = '/src/src/var';
+		FS.mkdirTree(SAVE_DIR);
+		FS.mount(FS.filesystems.IDBFS, {}, SAVE_DIR);
+		let syncing = false;
+		const syncfs = (populate) => new Promise((resolve) => {
+			if (syncing && !populate) return resolve();
+			syncing = true;
+			FS.syncfs(populate, (err) => {
+				syncing = false;
+				if (err) console.error('[save] syncfs', populate ? 'load' : 'save', err);
+				resolve();
+			});
+		});
+		await syncfs(true);
+		timing('sauvegardes restaurées');
+		window.saveUserFiles = () => syncfs(false);
+		setInterval(window.saveUserFiles, 2000);
+		addEventListener('pagehide', window.saveUserFiles);
+		document.addEventListener('visibilitychange', () => document.hidden && window.saveUserFiles());
+
+		// 95 % : démarrage de PHP (synchrone : init SDL, textures, niveaux...). On laisse le navigateur
+		// peindre le loader avant de bloquer le thread.
+		loader.progress(0.95, 'Démarrage du jeu...');
+		await nextFrame();
+		await nextFrame();
+
+		window.run = () => {
+			ccall("phpw_run", "void", ["string"], [document.getElementById('php').value]);
+		};
+		try {
+			run();
+			// phpw_run() n'est revenu normalement que si emscripten_set_main_loop() n'a pas été atteint
+			// (exception PHP au boot, sdl_frame()/$app introuvable...)
+			loader.error(lastLines.join(' | ') || 'phpw_run() a échoué');
+			return;
+		} catch (e) {
+			// emscripten_set_main_loop(..., simulate_infinite_loop=1) lève "unwind" : c'est le cas normal
+			if (e !== 'unwind' && !(e && e.name === 'ExitStatus')) {
+				loader.error(e && e.message ? e.message : String(e));
+				throw e;
+			}
+		}
+
+		timing('PHP démarré (app.php exécuté)');
+
+		// La boucle principale tourne : on masque le loader après la première frame rendue
+		await nextFrame();
+		await nextFrame();
+		timing('première frame');
+		loader.hide();
+		document.getElementById('canvas').focus();
+	}
+
+	main().catch((e) => {
+		console.error(e);
+		loader.error(e && e.message ? e.message : String(e));
+	});
 </script>
 
 
