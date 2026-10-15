@@ -207,14 +207,18 @@ SDL (`InputTouchpad` ne sert plus dans le navigateur).
 | Geste | Touche | Effet |
 |---|---|---|
 | glisser gauche / droite (≈ 12 px suffisent) et garder le doigt posé | ← / → | courir (choix dans les menus) |
-| glisser bas / haut | ↓ / ↑ | rouler ou s'accroupir / regarder en haut (navigation dans les menus) |
+| glisser franchement bas / haut (≈ 28 px, d'un geste) | ↓ / ↑ | rouler ou s'accroupir / regarder en haut (navigation dans les menus) |
 | tap | Espace | sauter, valider dans les menus, passer la démo |
 | bouton **A** (bas droite) ou 2e doigt n'importe où | Espace maintenu | saut immédiat, plus haut si on reste appuyé |
 
 La croix est « flottante » : son centre est l'endroit où le doigt se pose, et il suit le doigt au-delà
 de 24 px. Repartir dans l'autre sens ne demande donc que ~36 px, quelle que soit la longueur du glissé
 précédent. Un axe n'est pris en compte que s'il n'est pas dominé par l'autre (un glissé vers le bas
-dans un menu ne déclenche pas → en plus). Un petit cercle montre le centre et la position du doigt.
+dans un menu ne déclenche pas → en plus). Une touche enfoncée ne se relâche qu'en revenant près du
+centre (hystérésis) : pas de clignotement. Le vertical est volontairement moins sensible : tant que
+↓/↑ n'est pas enfoncé, le centre vertical rattrape lentement le doigt (8 % de l'écart à chaque
+mouvement). La dérive du pouce pendant qu'on court est absorbée et ne déclenche pas de roulade par
+erreur, alors qu'un vrai glissé vers le bas la déclenche. Un petit cercle montre le centre et la position du doigt.
 
 **Pad de debug** (ordinateur : sous le canvas ; mobile : bouton **DEBUG** en haut à droite) : boutons
 8 4 6 2 (caméra libre, maintenus = déplacement continu), 5 (Sonic suit la caméra), F3 / F4 (niveau

@@ -160,8 +160,12 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 	const base = touch.querySelector('.sc-base');
 	const knob = touch.querySelector('.sc-knob');
 
-	// seuils en px CSS : déclenchement, relâchement (hystérésis), distance max avant que l'ancre suive
+	// seuils en px CSS : déclenchement, relâchement (hystérésis), distance max avant que l'ancre suive.
+	// Horizontal : très sensible (courir). Vertical : geste franc exigé (bas = roulade) ; en plus, tant
+	// que bas/haut n'est pas enfoncé, l'ancre verticale rattrape lentement le doigt (V_LEAK par événement)
+	// pour absorber la dérive du pouce pendant qu'on court : seul un vrai glissé vers le bas déclenche.
 	const T = 12, T_OFF = 6, CLAMP = 24;
+	const TV = 28, TV_OFF = 14, CLAMP_V = 40, V_LEAK = 0.08;
 	const TAP_SLOP = 10, TAP_MS = 300, TAP_HOLD_MS = 180;
 	let stick = null;                // { id, ax, ay, x0, y0, t0, moved, h, v }
 	const jumpers = new Set();       // pointeurs qui tiennent Espace
@@ -174,14 +178,16 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 	};
 
 	function updateStick(x, y) {
+		if (!stick.v) stick.ay += (y - stick.ay) * V_LEAK;
 		let dx = x - stick.ax, dy = y - stick.ay;
 		// l'ancre suit le doigt au-delà de CLAMP : repartir dans l'autre sens est immédiat
 		if (Math.abs(dx) > CLAMP) { stick.ax = x - Math.sign(dx) * CLAMP; dx = Math.sign(dx) * CLAMP; }
-		if (Math.abs(dy) > CLAMP) { stick.ay = y - Math.sign(dy) * CLAMP; dy = Math.sign(dy) * CLAMP; }
+		if (Math.abs(dy) > CLAMP_V) { stick.ay = y - Math.sign(dy) * CLAMP_V; dy = Math.sign(dy) * CLAMP_V; }
 		const ax = Math.abs(dx), ay = Math.abs(dy);
-		// un axe ne compte que s'il n'est pas trop dominé par l'autre (glisser bas dans un menu ≠ droite)
-		const h = ax >= T && ax >= ay * 0.5 ? (dx > 0 ? 'right' : 'left') : ax < T_OFF || ax < ay * 0.4 ? null : stick.h;
-		const v = ay >= T && ay >= ax * 0.5 ? (dy > 0 ? 'down' : 'up') : ay < T_OFF || ay < ax * 0.4 ? null : stick.v;
+		// pour s'enfoncer, un axe ne doit pas être dominé par l'autre (glisser bas dans un menu ≠ droite) ;
+		// une fois enfoncé, il ne se relâche qu'en revenant vers le centre (hystérésis, pas de clignotement)
+		const h = ax >= T && ax >= ay * 0.5 ? (dx > 0 ? 'right' : 'left') : ax < T_OFF ? null : stick.h;
+		const v = ay >= TV && ay >= ax ? (dy > 0 ? 'down' : 'up') : ay < TV_OFF ? null : stick.v;
 		setDir('h', h);
 		setDir('v', v);
 		if (Math.hypot(x - stick.x0, y - stick.y0) > TAP_SLOP) stick.moved = true;
