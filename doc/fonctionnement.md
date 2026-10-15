@@ -165,6 +165,15 @@ envoyez l'événement `sonic:ready`) à l'endroit voulu.
 La console affiche les temps de chaque étape : `[boot] wasm téléchargé`, `runtime prêt`,
 `sauvegardes restaurées`, `PHP démarré`, `première frame`.
 
+**Fluidité** : `phpw_run` (le démarrage de PHP) bloque le thread principal plusieurs secondes. Toutes
+les animations du loader n'utilisent que `transform` (calques promus avec `will-change`) : le
+compositeur du navigateur les joue sans le thread principal, donc elles ne se figent pas. Les nuages
+et le damier sont des bandes plus larges qui glissent, les rayures de la barre aussi. La barre de
+progression est rayée sur toute sa largeur, et un cache coulisse vers la droite avec
+`translateX(pct%)`. Une animation de `background-position` ou une transition de `width`
+s'arrêteraient pendant le démarrage : la barre restait alors à moitié remplie, alors que le compteur
+affichait 95 %.
+
 ## Mobile et tablette (`mobile.js`)
 
 `mobile.js` est inclus juste après `loader.js`, **avant** le lancement du wasm : la classe
@@ -209,9 +218,11 @@ SDL (`InputTouchpad` ne sert plus dans le navigateur).
 | glisser gauche / droite (≈ 12 px suffisent) et garder le doigt posé | ← / → | courir (choix dans les menus) |
 | glisser franchement bas / haut (≈ 28 px, d'un geste) | ↓ / ↑ | rouler ou s'accroupir / regarder en haut (navigation dans les menus) |
 | tap | Espace | sauter, valider dans les menus, passer la démo |
+| doigt sur la **croix dessinée** (bas gauche) | ← → ↑ ↓ selon le bras | comme une vraie croix : le bras sous le doigt (bas / haut seulement dans le quart vertical) ; le bras enfoncé s'allume |
 | bouton **A** (bas droite) ou 2e doigt n'importe où | Espace maintenu | saut immédiat, plus haut si on reste appuyé |
 
-La croix est « flottante » : son centre est l'endroit où le doigt se pose, et il suit le doigt au-delà
+La croix et le bouton A sont dessinés pour montrer qu'on joue à deux mains. Ailleurs sur l'écran,
+la croix est « flottante » : son centre est l'endroit où le doigt se pose, et il suit le doigt au-delà
 de 24 px. Repartir dans l'autre sens ne demande donc que ~36 px, quelle que soit la longueur du glissé
 précédent. Un axe n'est pris en compte que s'il n'est pas dominé par l'autre (un glissé vers le bas
 dans un menu ne déclenche pas → en plus). Une touche enfoncée ne se relâche qu'en revenant près du
@@ -224,6 +235,19 @@ erreur, alors qu'un vrai glissé vers le bas la déclenche. Un petit cercle mont
 8 4 6 2 (caméra libre, maintenus = déplacement continu), 5 (Sonic suit la caméra), F3 / F4 (niveau
 précédent / suivant), F6 (panneau coordonnées + **FPS**). Utile aussi sur un portable sans pavé
 numérique. Depuis la console : `SonicControls.key('f6', true)` puis `SonicControls.key('f6', false)`.
+
+**Plein écran sur ordinateur** : bouton **PLEIN ECRAN** de la barre sous le jeu, ou double-clic sur
+le jeu (Échap pour sortir). Le canvas passe en plein écran et SDL suit sa nouvelle taille CSS : plus de
+tuiles, sprites plus gros.
+
+## Options du jeu (menu OPTIONS)
+
+Elles sont sauvegardées dans `var/options.json`, donc dans IndexedDB côté navigateur.
+
+| Option | Effet |
+|---|---|
+| **FILTRE CRT** ON / OFF | `Renderer/CrtFilter.php` : lignes de balayage (le bas de chaque ligne du jeu assombri) et coins assombris, dessinés sur l'image agrandie. Ce sont deux surfaces RGBA converties en textures, ce qui les rend transparentes : l'extension n'a ni `SDL_SetTextureBlendMode` ni `SDL_SetRenderDrawBlendMode`. Elles sont recréées seulement quand la taille change |
+| **VITESSE** PAL 50HZ (défaut) / NTSC 60HZ | La Master System européenne affiche 50 images/s, et Sonic (même ROM partout) fait une image de logique par image affichée. Toute la partie (Sonic, ennemis, animations, chrono du jeu) tourne donc à 50/60 = 83 % de la vitesse NTSC. Le jeu multiplie le temps de chaque frame par ce facteur. Records et ghosts restent comparables, car ils sont en temps de jeu. La musique n'est pas ralentie |
 
 ## Balises de la page
 

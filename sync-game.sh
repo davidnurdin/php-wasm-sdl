@@ -9,7 +9,9 @@
 #   2. vendor/ : copié depuis le jeu, sinon `composer install` via docker
 #   3. suppression des tranches d'images générées (<image>-N.png) : le jeu les régénère au
 #      chargement avec GD si l'image fait plus de 4064 px de large (limite de taille des textures)
-#   4. application des patches wasm de patches/game/*.patch (dans l'ordre alphabétique)
+#   4. application des patches wasm de patches/game/ (aucun aujourd'hui : le jeu est identique des deux côtés)
+#
+# Sens inverse (modifs faites dans demo/src/src) : ./sync-to-game.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -25,19 +27,7 @@ echo "==> rsync $SRC -> $DST"
 # .git de demo/src/src est protégé (P) ; tout ce qui est exclu est supprimé de la destination
 rsync -a --delete --delete-excluded \
   --filter='P /.git' \
-  --exclude='/.git' \
-  --exclude='/.idea' \
-  --exclude='/.vscode' \
-  --exclude='/tools' \
-  --exclude='/var' \
-  --exclude='crash.log' \
-  --exclude='/php-sdl' \
-  --exclude='/php-sdl-*' \
-  --exclude='/php-mixer' \
-  --exclude='/sonic.tar.gz' \
-  --exclude='/.castor.stub.php' \
-  --exclude='__pycache__' \
-  --exclude='/.wasm-sync' \
+  --exclude-from="$ROOT/sync-game.exclude" \
   "$SRC/" "$DST/"
 
 if [ ! -f "$DST/vendor/autoload.php" ]; then

@@ -1,0 +1,15 @@
+# Exclusions communes à sync-game.sh (jeu -> demo/src/src) et sync-to-game.sh (demo/src/src -> jeu) :
+# fichiers propres au poste de dev ou au natif, jamais packagés dans le wasm. Format : --exclude-from de rsync.
+/.git
+/.idea
+/.vscode
+/tools
+/var
+crash.log
+/php-sdl
+/php-sdl-*
+/php-mixer
+/sonic.tar.gz
+/.castor.stub.php
+__pycache__
+/.wasm-sync

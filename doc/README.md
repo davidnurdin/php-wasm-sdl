@@ -53,8 +53,10 @@ tout est compilé dans des conteneurs.
 | `Dockerfile`, `docker-bake.hcl` | Recette de compilation du moteur |
 | `config.sdl`, `config-image.sdl`, `config-mixer.sdl`, `config-ttf.sdl` | `config.m4` de remplacement des extensions SDL, adaptés à emscripten |
 | `source/phpw.c` | Glue C : démarre PHP embed, exécute le code, branche la boucle navigateur |
-| `sync-game.sh` | Copie le jeu final vers `demo/src/src`, nettoie, applique les patches wasm |
-| `patches/game/` | Adaptations wasm du jeu (`*.patch` = diff, `*.sh` = transformation scriptée) |
+| `sync-game.sh` | Copie le jeu final vers `demo/src/src`, nettoie (identique au jeu natif) |
+| `sync-to-game.sh` | Sens inverse : `demo/src/src` → jeu natif ; `--check` vérifie que les deux sont identiques |
+| `sync-game.exclude` | Fichiers propres au poste de dev, exclus dans les deux sens |
+| `patches/game/` | Adaptations wasm temporaires du jeu (vide : tout est intégré au jeu) |
 | `build-engine.sh` | Compile le moteur → `build/` |
 | `package.sh` | Package `demo/src` → `php-web.data`, injecte le loader, `--deploy` copie à la racine |
 | `serve.sh` | Serveur HTTP local (`demo` ou `root`) |
@@ -62,6 +64,6 @@ tout est compilé dans des conteneurs.
 | `demo/public/index.html` | Page de la démo : lance le wasm, code PHP de démarrage, sauvegardes |
 | `demo/public/loader.js` | Écran de chargement façon Sonic (`window.SonicLoader`) |
 | `demo/public/mobile.js` | Mode mobile / tablette : plein écran, paysage, sans debug (`window.SonicMobile`) |
-| `demo/public/controls.js` | Commandes à l'écran → vrais événements clavier : tactile (croix flottante, bouton A) et pad de debug 8 4 6 2 5 / F3 F4 F6 (`window.SonicControls`) |
+| `demo/public/controls.js` | Commandes à l'écran → vrais événements clavier : tactile (croix dessinée ou flottante, bouton A), pad de debug 8 4 6 2 5 / F3 F4 F6, bouton plein écran (`window.SonicControls`) |
 | `demo/public/manifest.webmanifest`, `demo/public/assets/` | Application web (écran d'accueil : plein écran, paysage), icônes, image de partage, police du loader |
 | `go.sh` | Ancien script tout-en-un (historique, remplacé par les scripts ci-dessus) |

@@ -4,7 +4,8 @@ La chaîne a trois étapes indépendantes :
 
 1. **le moteur** (`build-engine.sh`) : PHP + extensions → `build/php-web.mjs` + `build/php-web.wasm`.
    On ne le refait que si on change le Dockerfile, une extension ou `source/phpw.c` ;
-2. **le jeu** (`sync-game.sh`) : copie du jeu PHP natif vers `demo/src/src`, avec les patches wasm ;
+2. **le jeu** (`sync-game.sh`) : copie du jeu PHP natif vers `demo/src/src` (identique au jeu natif ;
+   sens inverse : `sync-to-game.sh`) ;
 3. **le packaging** (`package.sh`) : `demo/src` → `php-web.data`, injecté dans `php-web.mjs`.
 
 ## 1. Le moteur : `./build-engine.sh`
@@ -93,27 +94,41 @@ en `-O0` le marqueur d'injection change (c'est alors le commentaire `--pre-js` q
 ./sync-game.sh ~/autre/clone/sonicGamePhp
 ```
 
-1. **rsync** du working tree (modifications non commitées comprises) vers `demo/src/src`, sans
-   `.git`, `.idea`, `.vscode`, `tools/` (scripts Python de ripping), `var/` (sauvegardes locales),
-   `crash.log`, les sources C des extensions (`php-sdl*`, `php-mixer`), `sonic.tar.gz`,
-   `.castor.stub.php`. Le `.git` de `demo/src/src` est protégé (c'est un clone de sonicGamePhp) ;
+1. **rsync** du working tree (modifications non commitées comprises) vers `demo/src/src`, sans ce
+   que liste `sync-game.exclude` : `.git`, `.idea`, `.vscode`, `tools/` (scripts Python de ripping),
+   `var/` (sauvegardes locales), `crash.log`, les sources C des extensions (`php-sdl*`, `php-mixer`),
+   `sonic.tar.gz`, `.castor.stub.php`. Le `.git` de `demo/src/src` est protégé (c'est un clone de
+   sonicGamePhp) ;
 2. **vendor/** : copié depuis le jeu ; s'il manque, `composer install --no-dev` dans le conteneur
    `composer:2` ;
 3. **suppression des tranches d'images** `xxx-N.png` dont l'image d'origine `xxx.png` fait plus de
    4064 px de large : ce sont des fichiers générés par le jeu (voir fonctionnement.md). Les supprimer
    évite d'embarquer des tranches périmées ; le jeu les régénère au démarrage ;
-4. **patches** : chaque fichier de `patches/game/`, dans l'ordre alphabétique :
+4. **patches** (aucun aujourd'hui, voir ci-dessous) : chaque fichier de `patches/game/`, dans l'ordre alphabétique :
    - `NN-nom.patch` : diff unifié, appliqué avec `patch -p1` (échoue s'il ne s'applique plus) ;
    - `NN-nom.sh` : script appelé avec le dossier du jeu en argument. Plus robuste qu'un diff quand
      le jeu évolue (recherche/remplacement).
 5. écrit `demo/src/src/.wasm-sync` (commit source, nombre de fichiers non commités, date).
 
-### Patches actuels
+### Un seul jeu, identique des deux côtés
 
-| Patch | Pourquoi |
+Il n'y a plus de patch : les adaptations nécessaires au wasm sont intégrées au jeu lui-même
+(`sonicGamePhp`), et fonctionnent aussi en natif :
+
+| Adaptation | Pourquoi |
 |---|---|
-| `10-int32-microtime.sh` | PHP wasm32 a des entiers **32 bits**. `(int)floor(microtime(true) * 60)` ≈ 1,07·10¹¹ déborde (modulo 2³²) et donne des index négatifs : `tileset1-cycle-1` introuvable, puis TypeError dans `SDL_RenderCopyEx`. Le script remplace `microtime(true)` par `fmod(microtime(true), 86400.0)` dans les conversions `(int)` |
-| `30-view-height-fps.patch` | `Game::$viewHeight` (public, 426 par défaut) : hauteur visée par le zoom automatique ; la page la met à 192 sur mobile (vue pleine largeur sans bandes noires). Ajoute aussi la ligne **FPS** en tête du panneau F6 |
+| `fmod(microtime(true), 86400.0)` dans les conversions `(int)` (`Scene.php`) | PHP wasm32 a des entiers **32 bits**. `(int)floor(microtime(true) * 60)` ≈ 1,07·10¹¹ déborde (modulo 2³²) et donne des index négatifs : `tileset1-cycle-1` introuvable, puis TypeError dans `SDL_RenderCopyEx` |
+| `Game::$viewHeight` (public, 426 par défaut) | hauteur visée par le zoom automatique ; la page la met à 192 sur mobile (vue pleine largeur sans bandes noires) |
+| masque alpha `-0x1000000` dans `CrtFilter` | `0xFF000000` ne tient pas dans un int 32 bits ; casté en `Uint32` par l'extension, `-0x1000000` donne la même valeur en natif et en wasm |
+
+Le dossier `patches/game/` reste disponible pour une adaptation temporaire.
+
+**Dans l'autre sens** : si on modifie le jeu dans `demo/src/src`, `./sync-to-game.sh` le renvoie vers
+`/home/david/poc/sonicGamePhp`, suppressions comprises. Il laisse en place ce que la copie wasm n'a
+pas : `.git`, `vendor/`, `var/`, outils, extensions, tranches d'images générées. Ensuite : commit et
+push dans le jeu, puis `./sync-game.sh`. Pour vérifier que les deux côtés sont identiques, sans rien
+écrire : `./sync-to-game.sh --check`. Le code de retour vaut 1 et la liste des fichiers différents
+s'affiche s'il y a un écart.
 
 Les autres adaptations wasm sont dans `demo/public/index.html` (pas besoin de toucher au jeu) :
 neutralisation de `Loop::run()`, taille CSS du canvas, sauvegardes, mode mobile (vue 192 px de haut). Le tactile et le pad de debug sont dans `controls.js`.
@@ -167,6 +182,8 @@ particulier n'est requis (pas de threads, donc pas de COOP/COEP).
 |---|---|
 | Tout refaire | `./all.sh` |
 | Mettre à jour le jeu | `SKIP_ENGINE=1 ./all.sh` |
+| Renvoyer vers le jeu natif des modifs faites dans `demo/src/src` | `./sync-to-game.sh` |
+| Vérifier que le jeu natif et la copie wasm sont identiques | `./sync-to-game.sh --check` |
 | Changer une option PHP / une extension | modifier `Dockerfile` puis `./build-engine.sh && ./package.sh` |
 | Modifier la page / le loader | éditer `demo/public/index.html` ou `loader.js`, recharger (pas de rebuild) |
 | Publier | `./package.sh --deploy`, commit, push |

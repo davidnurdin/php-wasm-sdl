@@ -12,6 +12,11 @@
  *   SonicLoader.error(message)            écran "GAME OVER" avec le message
  *   SonicLoader.onHide(fn)                callback appelé une fois le loader masqué
  * Événement équivalent à hide() : window.dispatchEvent(new Event('sonic:ready'))
+ *
+ * Fluidité : le démarrage de PHP (phpw_run) bloque le thread principal plusieurs secondes. Toutes les
+ * animations n'utilisent donc que transform / opacity (calques promus avec will-change) : le compositeur
+ * du navigateur les fait tourner sans le thread principal, elles ne se figent pas pendant ce temps.
+ * (Une animation de background-position ou de width, elle, s'arrêterait.)
  */
 (function () {
 	'use strict';
@@ -32,7 +37,8 @@
 }
 #sonic-loader.sl-hidden { opacity: 0; transform: scale(1.08); pointer-events: none; }
 #sonic-loader .sl-clouds {
-	position: absolute; inset: 0 0 auto 0; height: 55%; opacity: .9;
+	position: absolute; top: 0; left: 0; width: calc(100% + 900px); height: 55%; opacity: .9;
+	will-change: transform;
 	background:
 		radial-gradient(ellipse 60px 18px at 10% 30%, #fff 98%, transparent),
 		radial-gradient(ellipse 40px 14px at 14% 26%, #fff 98%, transparent),
@@ -44,17 +50,22 @@
 	animation: sl-scroll 40s linear infinite;
 }
 #sonic-loader .sl-ground {
-	position: absolute; left: 0; right: 0; bottom: 0; height: 22%;
+	position: absolute; left: 0; right: 0; bottom: 0; height: 22%; overflow: hidden;
 	border-top: 14px solid var(--grass);
-	box-shadow: inset 0 6px 0 var(--grass-dark);
+}
+#sonic-loader .sl-ground::before {
+	content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% + 64px);
 	background: repeating-conic-gradient(var(--earth) 0 25%, var(--earth-dark) 0 50%) 0 0 / 64px 64px;
-	animation: sl-run 0.5s linear infinite;
+	will-change: transform; animation: sl-run 0.5s linear infinite;
+}
+#sonic-loader .sl-ground::after {
+	content: ''; position: absolute; left: 0; right: 0; top: 0; height: 6px; background: var(--grass-dark);
 }
 #sonic-loader .sl-ring {
 	width: 92px; height: 92px; border-radius: 50%; position: relative; z-index: 1;
 	border: 14px solid var(--ring);
 	box-shadow: inset 0 0 0 4px var(--ring-dark), 0 0 0 4px var(--ring-dark), 0 0 24px rgba(255, 216, 0, .6);
-	animation: sl-spin 1s steps(8) infinite;
+	will-change: transform; animation: sl-spin 1s steps(8) infinite;
 }
 #sonic-loader .sl-ring::after {
 	content: ''; position: absolute; top: 6px; left: 14px; width: 18px; height: 10px;
@@ -66,7 +77,7 @@
 	text-shadow: 3px 0 var(--blue), -3px 0 var(--blue), 0 3px var(--blue), 0 -3px var(--blue),
 		5px 5px 0 #000;
 }
-#sonic-loader .sl-title span { display: inline-block; animation: sl-bounce 1.2s ease-in-out infinite; }
+#sonic-loader .sl-title span { display: inline-block; will-change: transform; animation: sl-bounce 1.2s ease-in-out infinite; }
 #sonic-loader .sl-hud {
 	position: relative; z-index: 1; width: min(420px, 80vw);
 	display: flex; flex-direction: column; gap: 8px;
@@ -74,13 +85,20 @@
 #sonic-loader .sl-rings { font-size: 20px; color: var(--ring); text-shadow: 2px 2px 0 #000; }
 #sonic-loader .sl-rings b { color: #fff; }
 #sonic-loader .sl-bar {
-	height: 22px; border: 4px solid #fff; border-radius: 4px; background: rgba(0, 0, 40, .55);
+	position: relative; height: 22px; border: 4px solid #fff; border-radius: 4px; background: #1d3c85;
 	box-shadow: 4px 4px 0 #000; overflow: hidden;
 }
-#sonic-loader .sl-fill {
-	height: 100%; width: 0%; transition: width .25s ease-out;
+/* la barre rayée occupe toute la largeur ; un cache de la couleur du fond glisse vers la droite
+   (transform : animé par le compositeur, même quand le thread principal est bloqué) */
+#sonic-loader .sl-fill { position: absolute; inset: 0; overflow: hidden; }
+#sonic-loader .sl-cover {
+	position: absolute; inset: 0; background: #1d3c85;
+	will-change: transform; transition: transform .25s ease-out;
+}
+#sonic-loader .sl-fill::before {
+	content: ''; position: absolute; top: 0; bottom: 0; left: -34px; width: calc(100% + 34px);
 	background: repeating-linear-gradient(-45deg, var(--ring) 0 12px, #ffef7a 12px 24px);
-	animation: sl-stripes .6s linear infinite;
+	will-change: transform; animation: sl-stripes .6s linear infinite;
 }
 #sonic-loader .sl-status {
 	font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; min-height: 1.3em;
@@ -96,13 +114,13 @@
 #sonic-loader .sl-source a { color: var(--ring); font-weight: bold; text-decoration: underline; overflow-wrap: anywhere; }
 #sonic-loader.sl-error .sl-title { color: #ff4040; }
 #sonic-loader.sl-error .sl-ring { animation: none; filter: grayscale(1); }
-#sonic-loader.sl-error .sl-fill { background: #ff4040; animation: none; }
+#sonic-loader.sl-error .sl-fill::before { background: #ff4040; animation: none; }
 @keyframes sl-spin { 0% { transform: scaleX(1); } 25% { transform: scaleX(.15); } 50% { transform: scaleX(-1); } 75% { transform: scaleX(.15); } 100% { transform: scaleX(1); } }
-@keyframes sl-run { to { background-position: -64px 0; } }
-@keyframes sl-scroll { to { background-position: -900px 0; } }
-@keyframes sl-stripes { to { background-position: 34px 0; } }
+@keyframes sl-run { to { transform: translateX(-64px); } }
+@keyframes sl-scroll { to { transform: translateX(-900px); } }
+@keyframes sl-stripes { to { transform: translateX(33.94px); } }
 @keyframes sl-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-@media (prefers-reduced-motion: reduce) { #sonic-loader *, #sonic-loader *::after { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { #sonic-loader *, #sonic-loader *::before, #sonic-loader *::after { animation: none !important; } }
 `;
 
 	const style = document.createElement('style');
@@ -120,7 +138,7 @@
 		<div class="sl-title">${[...'LOADING'].map((c, i) => `<span style="animation-delay:${i * 0.08}s">${c}</span>`).join('')}</div>
 		<div class="sl-hud">
 			<div class="sl-rings">RINGS <b class="sl-pct">0</b></div>
-			<div class="sl-bar"><div class="sl-fill"></div></div>
+			<div class="sl-bar"><div class="sl-fill"></div><div class="sl-cover"></div></div>
 			<div class="sl-status">Initialisation...</div>
 		</div>
 		<div class="sl-source">Open source project : <a href="https://github.com/davidnurdin/php-wasm-sdl/" target="_blank" rel="noopener">https://github.com/davidnurdin/php-wasm-sdl/</a></div>
@@ -137,7 +155,7 @@
 		progress(ratio, label) {
 			current = Math.max(current, Math.min(1, Math.max(0, ratio))); // ne recule jamais
 			const pct = Math.round(current * 100);
-			$('.sl-fill').style.width = pct + '%';
+			$('.sl-cover').style.transform = `translateX(${pct}%)`;
 			$('.sl-pct').textContent = String(pct).padStart(3, '0');
 			root.setAttribute('aria-valuenow', String(pct));
 			if (label) api.status(label);

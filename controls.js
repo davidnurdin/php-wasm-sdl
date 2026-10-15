@@ -3,7 +3,9 @@
  * mêmes touches qu'au clavier (saut à hauteur variable, roulade, menus, saisie du nom...).
  *
  * Tactile (mobile / tablette uniquement), une couche transparente au-dessus du canvas :
- *   - glisser n'importe où = croix directionnelle "flottante" : quelques pixels suffisent, le point
+ *   - croix directionnelle dessinée en bas à gauche (et bouton A en bas à droite : on joue à deux mains) :
+ *     un doigt posé dessus donne la direction de son bras, comme une vraie croix ;
+ *   - glisser n'importe où ailleurs = croix "flottante" : quelques pixels suffisent, le point
  *     d'ancrage suit le doigt, donc repartir dans l'autre sens réagit tout de suite ;
  *     gauche/droite = courir, bas = rouler / s'accroupir, haut = regarder en haut (flèches dans les menus) ;
  *   - tap = Espace (saut en jeu, Entrée dans les menus, passe la démo) ;
@@ -14,6 +16,7 @@
  * Pad de debug (ordinateur et mobile) : caméra libre 8 4 6 2, 5 = Sonic suit la caméra,
  * F3 / F4 = niveau précédent / suivant, F6 = infos + FPS. Les boutons restent "enfoncés" tant qu'on
  * appuie (la caméra avance en continu). Sur mobile il s'ouvre avec le bouton DEBUG en haut à droite.
+ * Sur ordinateur, la barre contient aussi le bouton PLEIN ECRAN (ou double-clic sur le jeu).
  *
  * À inclure en <script> classique après mobile.js. API : window.SonicControls = { key(name, down), start() }
  */
@@ -66,16 +69,33 @@
 #sc-touch { position: fixed; inset: 0; z-index: 10; touch-action: none; display: none; }
 #sc-touch.sc-on { display: block; }
 #sc-touch .sc-jump {
-	position: absolute; right: calc(5vmin + env(safe-area-inset-right)); bottom: 7vmin;
+	position: absolute; right: calc(5vmin + env(safe-area-inset-right)); bottom: 17.5vmin;
 	width: 21vmin; height: 21vmin; border-radius: 50%; box-sizing: border-box;
-	border: .8vmin solid rgba(255, 255, 255, .45); background: rgba(255, 216, 0, .18);
-	color: rgba(255, 255, 255, .7); font: bold 7vmin 'SonicLoader', 'Arial Black', sans-serif;
+	border: .8vmin solid rgba(255, 255, 255, .55); background: rgba(0, 0, 40, .35);
+	color: rgba(255, 216, 0, .9); font: bold 7vmin 'SonicLoader', 'Arial Black', sans-serif;
 	display: flex; align-items: center; justify-content: center;
 }
-#sc-touch .sc-jump.sc-pressed { background: rgba(255, 216, 0, .45); transform: scale(.94); }
+#sc-touch .sc-jump.sc-pressed { background: rgba(255, 216, 0, .85); color: #000; transform: scale(.94); }
 #sc-touch .sc-base, #sc-touch .sc-knob {
 	position: absolute; border-radius: 50%; pointer-events: none; display: none; transform: translate(-50%, -50%);
 }
+#sc-touch .sc-dpad {
+	position: absolute; left: calc(5vmin + env(safe-area-inset-left)); bottom: 13vmin; width: 30vmin; height: 30vmin;
+	pointer-events: none;
+}
+#sc-touch .sc-dpad i {
+	position: absolute; width: 33.4%; height: 33.4%; box-sizing: border-box;
+	background: rgba(0, 0, 40, .35); border: .6vmin solid rgba(255, 255, 255, .55);
+	color: rgba(255, 255, 255, .8); font: normal 4.5vmin sans-serif;
+	display: flex; align-items: center; justify-content: center;
+}
+#sc-touch .sc-dpad .sc-u { left: 33.3%; top: 0; border-bottom: 0; border-radius: 1.5vmin 1.5vmin 0 0; }
+#sc-touch .sc-dpad .sc-d { left: 33.3%; bottom: 0; border-top: 0; border-radius: 0 0 1.5vmin 1.5vmin; }
+#sc-touch .sc-dpad .sc-l { left: 0; top: 33.3%; border-right: 0; border-radius: 1.5vmin 0 0 1.5vmin; }
+#sc-touch .sc-dpad .sc-r { right: 0; top: 33.3%; border-left: 0; border-radius: 0 1.5vmin 1.5vmin 0; }
+#sc-touch .sc-dpad .sc-c { left: 33.3%; top: 33.3%; border: 0; background: rgba(0, 0, 40, .45); }
+#sc-touch .sc-dpad.sc-up .sc-u, #sc-touch .sc-dpad.sc-down .sc-d,
+#sc-touch .sc-dpad.sc-left .sc-l, #sc-touch .sc-dpad.sc-right .sc-r { background: rgba(255, 216, 0, .85); color: #000; }
 #sc-touch .sc-base { width: 15vmin; height: 15vmin; border: .6vmin solid rgba(255, 255, 255, .3); }
 #sc-touch .sc-knob { width: 8vmin; height: 8vmin; background: rgba(255, 255, 255, .35); }
 #sc-debug {
@@ -91,6 +111,8 @@
 }
 #sc-debug button.sc-pressed { background: #ffd800; color: #000; transform: translate(1px, 1px); box-shadow: 1px 1px 0 #000; }
 #sc-debug .sc-col { display: flex; flex-direction: column; gap: 6px; }
+#sc-debug .sc-fs { background: #ffd800; color: #000; height: 46px; font-size: 14px; }
+html.is-mobile #sc-debug .sc-fs { display: none; }
 html.is-mobile #sc-debug {
 	position: fixed; z-index: 20; top: calc(14vmin + env(safe-area-inset-top)); right: calc(3vmin + env(safe-area-inset-right));
 	margin: 0; padding: 8px; border-radius: 8px; background: rgba(0, 0, 40, .75); border: 2px solid #fff;
@@ -113,6 +135,7 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 	debugPad.id = 'sc-debug';
 	debugPad.className = 'sm-keep';
 	debugPad.innerHTML = `
+		<button class="sc-fs" title="Plein écran (ou double-clic sur le jeu ; Échap pour sortir)">⛶ PLEIN ECRAN</button>
 		<div class="sc-cross" title="Caméra libre (pavé numérique)">
 			<span></span><button data-key="kp8" title="Caméra haut (8)">8</button><span></span>
 			<button data-key="kp4" title="Caméra gauche (4)">4</button>
@@ -141,6 +164,26 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 		btn.addEventListener('pointerup', up);
 		btn.addEventListener('pointercancel', up);
 	});
+	// ---------- plein écran (ordinateur) ----------
+	// Le canvas passe en plein écran (le navigateur l'étire à la taille de l'écran) ; SDL (fenêtre
+	// RESIZABLE) suit sa nouvelle taille CSS sur l'événement resize : plus de tuiles, sprites plus gros.
+	function toggleFullscreen() {
+		const canvas = document.getElementById('canvas');
+		if (document.fullscreenElement || document.webkitFullscreenElement) {
+			(document.exitFullscreen || document.webkitExitFullscreen).call(document);
+		} else {
+			const request = canvas.requestFullscreen || canvas.webkitRequestFullscreen;
+			request?.call(canvas, { navigationUI: 'hide' })?.catch?.((e) => console.warn('[fullscreen]', e));
+		}
+	}
+	const onFullscreenChange = () => {
+		setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+		document.getElementById('canvas').focus();
+	};
+	document.addEventListener('fullscreenchange', onFullscreenChange);
+	document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+	debugPad.querySelector('.sc-fs').addEventListener('click', toggleFullscreen);
+
 	// le canvas garde le focus clavier (sinon les vraies touches ne vont plus au jeu)
 	debugPad.addEventListener('mousedown', (e) => e.preventDefault());
 	debugPad.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -155,8 +198,10 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 	const touch = document.createElement('div');
 	touch.id = 'sc-touch';
 	touch.className = 'sm-keep';
-	touch.innerHTML = '<div class="sc-base"></div><div class="sc-knob"></div><div class="sc-jump">A</div>';
+	touch.innerHTML = '<div class="sc-dpad"><i class="sc-u">▲</i><i class="sc-d">▼</i><i class="sc-l">◀</i><i class="sc-r">▶</i><i class="sc-c"></i></div>'
+		+ '<div class="sc-base"></div><div class="sc-knob"></div><div class="sc-jump">A</div>';
 	const jumpBtn = touch.querySelector('.sc-jump');
+	const dpad = touch.querySelector('.sc-dpad');
 	const base = touch.querySelector('.sc-base');
 	const knob = touch.querySelector('.sc-knob');
 
@@ -167,7 +212,7 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 	const T = 12, T_OFF = 6, CLAMP = 24;
 	const TV = 28, TV_OFF = 14, CLAMP_V = 40, V_LEAK = 0.08;
 	const TAP_SLOP = 10, TAP_MS = 300, TAP_HOLD_MS = 180;
-	let stick = null;                // { id, ax, ay, x0, y0, t0, moved, h, v }
+	let stick = null;                // { id, ax, ay, x0, y0, t0, moved, h, v, fixed, size }
 	const jumpers = new Set();       // pointeurs qui tiennent Espace
 
 	const setDir = (axis, want) => {
@@ -175,9 +220,31 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 		if (stick[axis]) key(stick[axis], false);
 		stick[axis] = want;
 		if (want) key(want, true);
+		for (const dir of ['up', 'down', 'left', 'right']) dpad.classList.toggle('sc-' + dir, stick.h === dir || stick.v === dir);
 	};
 
+	/** Le doigt est-il sur la croix dessinée (marge comprise) ? -> centre et taille de la croix */
+	function onDpad(x, y) {
+		const r = dpad.getBoundingClientRect();
+		const m = r.width * 0.3;
+		if (x < r.left - m || x > r.right + m || y < r.top - m || y > r.bottom + m) return null;
+		return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, size: r.width };
+	}
+
+	/** Croix dessinée : la direction vient de la position du doigt par rapport à son centre. */
+	function updateFixed(x, y) {
+		const dx = x - stick.ax, dy = y - stick.ay, ax = Math.abs(dx), ay = Math.abs(dy);
+		const dead = stick.size * 0.12;
+		// bas / haut seulement dans le quart vertical (pas de roulade en appuyant sur le bras droit)
+		const h = ax >= dead && ax >= ay * 0.5 ? (dx > 0 ? 'right' : 'left') : ax < dead * 0.5 || ax < ay * 0.35 ? null : stick.h;
+		const v = ay >= dead && ay >= ax ? (dy > 0 ? 'down' : 'up') : ay < dead * 0.5 || ay < ax * 0.7 ? null : stick.v;
+		setDir('h', h);
+		setDir('v', v);
+		if (Math.hypot(x - stick.x0, y - stick.y0) > TAP_SLOP) stick.moved = true;
+	}
+
 	function updateStick(x, y) {
+		if (stick.fixed) return updateFixed(x, y);
 		if (!stick.v) stick.ay += (y - stick.ay) * V_LEAK;
 		let dx = x - stick.ax, dy = y - stick.ay;
 		// l'ancre suit le doigt au-delà de CLAMP : repartir dans l'autre sens est immédiat
@@ -205,8 +272,10 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 			key('space', true);
 			return;
 		}
+		const pad = onDpad(e.clientX, e.clientY);
 		stick = { id: e.pointerId, ax: e.clientX, ay: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false, h: null, v: null };
-		base.style.display = knob.style.display = 'block';
+		if (pad) Object.assign(stick, { fixed: true, ax: pad.cx, ay: pad.cy, size: pad.size });
+		else base.style.display = knob.style.display = 'block';
 		updateStick(e.clientX, e.clientY);
 	});
 	touch.addEventListener('pointermove', (e) => {
@@ -221,7 +290,8 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 		if (!stick || e.pointerId !== stick.id) return;
 		setDir('h', null);
 		setDir('v', null);
-		const tap = !stick.moved && performance.now() - stick.t0 < TAP_MS && e.type === 'pointerup';
+		// sur la croix dessinée, un appui bref reste une direction (pas un saut)
+		const tap = !stick.fixed && !stick.moved && performance.now() - stick.t0 < TAP_MS && e.type === 'pointerup';
 		stick = null;
 		base.style.display = knob.style.display = 'none';
 		if (tap) tapKey('space', TAP_HOLD_MS);
@@ -235,6 +305,7 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 		const canvas = document.getElementById('canvas');
 		canvas.insertAdjacentElement('afterend', debugPad);
 		if (isMobile) document.body.append(touch, toggle);
+		else canvas.addEventListener('dblclick', toggleFullscreen);
 	}
 	document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', mount) : mount();
 
