@@ -81,6 +81,9 @@
 		aspect-ratio: 840 / 426;
 		margin: 0 auto;
 		background: #111;
+		/* le canvas est en pixels CSS : sur un écran à devicePixelRatio 2 ou 3 (mobile), le navigateur
+		   l'agrandit ; en bilinéaire, les textes et les pixels « bavent » */
+		image-rendering: pixelated;
 	}
 	/* bouton PLEIN ECRAN (controls.js) : le canvas prend tout l'écran, SDL suit sa taille CSS */
 	#canvas:fullscreen { width: 100vw; height: 100vh; aspect-ratio: auto; background: #000; }

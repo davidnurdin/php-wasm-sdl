@@ -309,14 +309,14 @@ canons...) restent. Le jeu en réseau est à faire : voir [`TODO-multijoueur-res
 | Mode | Sonic | Règles |
 |---|---|---|
 | **COURSE** | 2 à 5 (3 par défaut) | Le premier à la ligne d'arrivée (damier, à la place du panneau de fin) gagne. Quand un Sonic arrive, les autres ont encore 30 s |
-| **DRAPEAU** | 1 contre 1 à 3 contre 3 (2 contre 2 par défaut) | Chaque équipe a une base près d'un bout de l'acte (bleus à gauche, rouges à droite) et y apparaît. Après le compte à rebours, le drapeau apparaît à mi-chemin, le plus loin possible de tous. Il faut le prendre et le **ramener à sa base**. Son porteur va moins vite (×0,8) et le lâche s'il est touché, blessé ou tombe (personne ne peut le reprendre pendant 1 s). 3 drapeaux ramenés gagnent ; au bout de 3 min, l'équipe qui en a ramené le plus |
-| **ANNEAUX** | 2 à 5 | 3 min. Chaque anneau ramassé ou perdu réapparaît 1,5 s plus tard à un emplacement d'anneau vide de l'acte. Le plus d'anneaux gagne (pas de vie à 100, le compteur continue) |
+| **DRAPEAU** | 1 contre 1 à 3 contre 3 (2 contre 2 par défaut) | Chaque équipe a une base près d'un bout de l'acte (bleus à gauche, rouges à droite) et y apparaît. Après le compte à rebours, le drapeau apparaît à mi-chemin, le plus loin possible de tous. Il faut le prendre et le **ramener à sa base**. Son porteur va moins vite (×0,75) et le lâche s'il est touché, blessé ou tombe (personne ne peut le reprendre pendant 1 s). 3 drapeaux ramenés gagnent ; au bout de 3 min, l'équipe qui en a ramené le plus |
+| **ANNEAUX** | 2 à 5 | 3 min. Les anneaux ramassés ne réapparaissent pas (même quand Sonic meurt, l'acte n'est pas rechargé : `GameObjectManager::$keepTilemap`). Un Sonic touché par un autre lui **donne tous ses anneaux**. Un Sonic qui meurt ou se blesse par accident (pics, vide...) perd ses anneaux : ils vont à celui qui l'a touché ou bousculé (rebond) dans les 5 s précédentes, sinon ils sont **partagés équitablement** entre tous les autres (le reste au hasard). Quand l'acte n'a plus d'anneaux, les bots chassent le Sonic le plus riche. Le plus d'anneaux gagne (pas de vie à 100, le compteur continue) |
 | **DEATHMATCH** | 2 à 5 | 3 min. Le plus de K.O. gagne, à égalité le moins de morts |
 
 **Contacts entre Sonic** : un Sonic qui saute ou roule (ou invincible) et touche un adversaire qui ne
 le fait pas le blesse. La victime perd ses anneaux et clignote 2 s. Sans anneaux, elle est K.O. : en
 course, elle repart du début ; en drapeau et en deathmatch, elle réapparaît ailleurs ; en mode anneaux,
-elle est seulement repoussée. Deux attaquants rebondissent l'un sur l'autre. En drapeau, seuls les
+elle est seulement repoussée (et l'attaquant prend ses anneaux). Deux attaquants rebondissent l'un sur l'autre. En drapeau, seuls les
 joueurs de l'équipe adverse peuvent se blesser. Les bots y courent moins vite que Sonic (300 px/s contre 500, porteur ×0,75) :
 ils foncent sur le drapeau, le ramènent, escortent leur porteur ou poursuivent celui d'en face. Dans une
 équipe d'au moins 2 bots, le dernier **défend** : il reste devant sa base, ne la quitte que pour un
