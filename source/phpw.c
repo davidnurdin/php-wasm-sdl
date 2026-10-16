@@ -60,7 +60,7 @@ int main() {
 
 void EMSCRIPTEN_KEEPALIVE phpw_run(char *code)
 {
-  setenv("USE_ZEND_ALLOC", "0", 1);
+  // allocateur Zend (par défaut) : bien plus rapide que le malloc d'emscripten pour les petits objets PHP
   php_embed_init(0, NULL);
   zend_try
   {
@@ -116,7 +116,9 @@ void EMSCRIPTEN_KEEPALIVE phpw_run(char *code)
 		php_callable_ready = 1; // Prêt pour main_loop() && update_events
 
 
-		emscripten_async_call(update_events_loop, NULL, 0); // le plus rapidement possible
+		// Une seule boucle : sdl_frame() à chaque requestAnimationFrame. L'ancienne seconde boucle
+		// (update_events_loop, setTimeout 0, ~250 appels/s) relançait aussi le jeu entre deux images :
+		// jusqu'à 2 images de jeu par image affichée, thread principal saturé (tactile et audio en retard).
 		emscripten_set_main_loop(main_loop, 0, 1); // NEVER QUIT !! => animated
 
 		// emscripten_set_interval((em_arg_callback_func)update_events_wrapper, 10, NULL);

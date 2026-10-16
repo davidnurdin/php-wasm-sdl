@@ -6,7 +6,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 	<!-- taille réelle de php-web.wasm, écrite par package.sh (Content-Length ne convient pas si le
 	     serveur compresse en gzip, comme GitHub Pages) -->
-	<meta name="php-wasm-size" content="10555932" />
+	<meta name="php-wasm-size" content="7591425" />
 
 	<title>Sonic en PHP : jouable dans le navigateur (PHP + SDL en WebAssembly)</title>
 	<meta name="description" content="Sonic the Hedgehog (Master System) réécrit en PHP pur et compilé en WebAssembly avec SDL2 : jouable dans le navigateur sur ordinateur, mobile et tablette (Android, iPhone, iPad). Projet open source." />
@@ -93,13 +93,11 @@
 	// TODO : onfocus on wasm ? (pause game)
 	require ('/src/src/vendor/autoload.php');
 
-	// utilise setTimeout
+	// Appelée en boucle (setTimeout 0) par les anciens moteurs (source/phpw.c) : ne fait plus rien. Elle
+	// relançait la boucle du jeu entre deux images : jusqu'à 2 images de jeu par image affichée, le thread
+	// principal saturé (tactile, audio). Le jeu ne tourne plus que dans sdl_frame().
 	function sdl_update_events($app)
 	{
-		// maximum speed (we stop sdl) !
-		// $app->game->disableSdl = true ;
-		  $app->game->gameLoop->start(1);
-		 // $app->game->disableSdl = false ;
 	}
 
 	// utilise animatedRequest
@@ -137,14 +135,31 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 
 </textarea>
 
+<script>
+	// SDL (rendu GLES2) appelle glCheckFramebufferStatus à chaque SDL_SetRenderTarget, donc à chaque image.
+	// En WebGL c'est un appel bloquant : le navigateur attend la fin du travail du GPU (CPU et GPU ne
+	// travaillent plus en parallèle), 65 % du temps d'une image. Nos cibles (textures RGBA) sont toujours
+	// complètes : on répond directement.
+	for (const ctx of [window.WebGLRenderingContext, window.WebGL2RenderingContext]) {
+		if (ctx) ctx.prototype.checkFramebufferStatus = function () { return 0x8CD5; }; // FRAMEBUFFER_COMPLETE
+	}
+</script>
 <script type="module">
 	import phpBinary from "./php-web.mjs";
 
 	const loader = window.SonicLoader;
 	const debug = document.getElementById('debug');
 	const lastLines = [];
+	const debugLines = [];
+	let debugPending = false;
 	const log = (prefix, data) => {
-		debug.value += prefix + data + "\n";
+		// les 200 dernières lignes seulement : réécrire un texte qui grossit sans fin ralentit la page
+		debugLines.push(prefix + data);
+		if (debugLines.length > 200) debugLines.splice(0, debugLines.length - 200);
+		if (!debugPending) {
+			debugPending = true;
+			setTimeout(() => { debugPending = false; debug.value = debugLines.join('\n') + '\n'; }, 500);
+		}
 		lastLines.push(String(data));
 		if (lastLines.length > 6) lastLines.shift();
 	};
@@ -245,7 +260,10 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 		await nextFrame();
 
 		window.run = () => {
-			const prelude = `define('SONIC_MOBILE', ${window.SonicMobile.isMobile ? 'true' : 'false'});\n`;
+			// SONIC_FRAME_INTERVAL : une image de jeu à chaque requestAnimationFrame (100 au plus par seconde :
+			// sur un écran 120 Hz, une image sur deux)
+			const prelude = `define('SONIC_MOBILE', ${window.SonicMobile.isMobile ? 'true' : 'false'});\n`
+				+ `define('SONIC_FRAME_INTERVAL', 0.01);\n`;
 			ccall("phpw_run", "void", ["string"], [prelude + document.getElementById('php').value]);
 		};
 		try {

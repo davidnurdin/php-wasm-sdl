@@ -151,7 +151,7 @@ ENV PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig/"
 # -s USE_LIBJPEG=1
 RUN --mount=type=cache,target=/emsdk/upstream/emscripten/cache cd /src/php-src && export PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig/' && ./buildconf --force \
     && emconfigure ./configure \
-    	CFLAGS="-s USE_ZLIB=1 -s USE_LIBPNG=1 " LDFLAGS="-s USE_ZLIB=1 -s USE_LIBPNG=1" \
+    	CFLAGS="-O2 -s USE_ZLIB=1 -s USE_LIBPNG=1 " LDFLAGS="-s USE_ZLIB=1 -s USE_LIBPNG=1" \
     	PKG_CONFIG_PATH='/usr/lib/x86_64-linux-gnu/pkgconfig/'  \
 		--enable-embed=static \
 		--with-layout=GNU  \

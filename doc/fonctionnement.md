@@ -30,17 +30,21 @@
 
 1. `php_embed_init` démarre PHP (SAPI embed, sans CLI) ;
 2. `zend_eval_string(code)` exécute le code PHP de la page. Celui-ci définit `sdl_frame($app)` et
-   `sdl_update_events($app)` puis fait `$app = include '/src/src/app.php'`. `app.php` construit le
+   `sdl_update_events($app)` (vide, gardée pour les anciens moteurs), les constantes `SONIC_MOBILE` et
+   `SONIC_FRAME_INTERVAL`, puis fait `$app = include '/src/src/app.php'`. `app.php` construit le
    container Symfony, lance la commande par défaut (`Game::run()` : init SDL, chargement des
    textures et des sons, enregistrement des timers ReactPHP) et **retourne** la commande. Comme
    `$app->game` est public, le C et le PHP de la page y ont accès ;
 3. le C récupère les deux fonctions PHP (`zend_fcall_info_init`) et `$app` dans la table des symboles
    globale ;
-4. il branche deux boucles navigateur :
-   - `emscripten_async_call(update_events_loop, NULL, 0)` : se ré-arme en continu (setTimeout 0) et
-     appelle `sdl_update_events($app)` ;
-   - `emscripten_set_main_loop(main_loop, 0, 1)` : appelle `sdl_frame($app)` à chaque
-     `requestAnimationFrame` (fréquence de l'écran).
+4. il branche **une seule** boucle navigateur : `emscripten_set_main_loop(main_loop, 0, 1)` appelle
+   `sdl_frame($app)` à chaque `requestAnimationFrame` (fréquence de l'écran).
+
+   Il y en avait une deuxième, `emscripten_async_call(update_events_loop, NULL, 0)` (setTimeout 0,
+   ~250 appels/s), qui appelait `sdl_update_events($app)` → `gameLoop->start(1)` : le jeu tournait
+   aussi entre deux images, jusqu'à 2 images de jeu (logique **et** rendu) par image affichée. Le
+   thread principal était saturé : tactile, clavier et audio passaient après. Elle est supprimée du
+   moteur, et `sdl_update_events()` ne fait plus rien pour les moteurs déjà compilés.
 5. `simulate_infinite_loop=1` : `emscripten_set_main_loop` ne revient jamais, il lève `"unwind"` pour
    rendre la main au navigateur. `php_embed_shutdown()` n'est donc **jamais** appelé : PHP, ses
    objets et ses ressources SDL restent vivants entre les frames.
@@ -63,9 +67,12 @@ en file, **avant** l'`include` d'`app.php` :
 ```
 
 `Loop::run()` exécute ce tick au premier tour, s'arrête et rend la main. Ensuite chaque appel de
-`sdl_frame()` / `sdl_update_events()` fait `gameLoop->start(1)` : un seul tour de boucle ReactPHP,
-qui exécute les timers arrivés à échéance. Le jeu n'a pas besoin d'être modifié et le même code
-tourne en natif.
+`sdl_frame()` fait `gameLoop->start(1)` : un seul tour de boucle ReactPHP, qui exécute les timers
+arrivés à échéance. Le même code tourne en natif.
+
+Le timer de l'image vaut 1/120 s en natif (la vsync cadence). La page définit
+`SONIC_FRAME_INTERVAL = 0.01` : une image de jeu à chaque `requestAnimationFrame`, 100 au plus par
+seconde (un écran 120 Hz fait une image de jeu sur deux, au lieu d'un rythme irrégulier).
 
 `GameLoop::start($maxTicks)` (dans le jeu) planifie un `futureTick` qui stoppe la boucle après
 `$maxTicks` tours, puis appelle `$loop->run()`.
@@ -81,6 +88,22 @@ tourne en natif.
   une taille faussée et le canvas finissait en 3×3 px (le TODO « voir pk marche pas en web » de
   `Window.php`). La page donne maintenant une taille CSS explicite au canvas
   (`width: min(100%, …)` + `aspect-ratio: 840 / 426`) et ne met plus de `zoom`.
+
+## Performances (navigateur)
+
+Mesuré avec le profiler de Chrome (CDP `Profiler.start`) et une instrumentation `microtime()` temporaire
+(temps de logique, scène, overlay, présentation par image) :
+
+| Problème | Effet | Correction |
+|---|---|---|
+| `glCheckFramebufferStatus` à chaque `SDL_SetRenderTarget` (SDL GLES2) | **65 % du temps CPU** : appel WebGL bloquant, le navigateur attend la fin du travail du GPU, CPU et GPU ne travaillent plus en parallèle | `index.html` remplace `checkFramebufferStatus` par une fonction qui répond `FRAMEBUFFER_COMPLETE` (nos cibles sont toujours des textures RGBA complètes) |
+| Deuxième boucle `update_events_loop` (voir phpw.c) | jusqu'à 2 images de jeu par image affichée, thread saturé (tactile et son en retard) | supprimée |
+| ~400 blocs redessinés à chaque image (`Scene::drawTiles`) | ~5 ms de PHP par image | les blocs autour de la vue (3 de marge) sont gardés dans une texture par palette (`tileCaches`) ; ils ne sont redessinés que si la vue sort de la zone ou qu'un bloc change (`Level::getVersion()`). L'image copie une texture, puis les anneaux et les blocs prioritaires |
+| Textes du menu avec contour (`TextRenderer::drawStyled`) : 37 copies par lettre | ~6 ms par image au menu | un texte redessiné à l'image suivante est gardé dans une texture (48 au plus) |
+| Les blocs des 35 niveaux chargés au démarrage (282 PNG, ~200 Mo de textures, certains plusieurs fois) | démarrage long (~20 s de PHP), mémoire GPU saturée sur mobile | `Sdl::registerTexture()` : textures enregistrées sans être chargées ; `LevelManager` charge celles du niveau joué et libère les autres ; un fichier partagé par plusieurs niveaux n'est chargé qu'une fois |
+| Événement `collisionTile` émis à chaque pas de physique (vue de debug) | coût pour Sonic et chaque bot | émis seulement en mode debug (`CollisionSystem::$reportTiles`) |
+| Recherche du sol pixel par pixel dans les 32 lignes du bloc | coût par capteur et par pas | première ligne solide de chaque colonne gardée par bloc (`Level::getTileTopAt`) |
+| Zone de debug de la page réécrite à chaque ligne (texte sans fin) | page de plus en plus lente | 200 dernières lignes, réécrites au plus 2 fois par seconde |
 
 ## Le système de fichiers
 

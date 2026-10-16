@@ -61,6 +61,11 @@ Plus `--disable-opcache --disable-fiber-asm --without-pcre-jit` (pas de JIT ni d
 Les extensions toujours présentes (Core, date, pcre, hash, json, random, Reflection, SPL, standard)
 complètent la liste. `CFLAGS/LDFLAGS="-s USE_ZLIB=1 -s USE_LIBPNG=1"` fournissent zlib et libpng.
 
+**`-O2` dans `CFLAGS`** : quand `CFLAGS` est donné au `configure`, PHP n'ajoute plus son `-O2` par défaut.
+Avant, le cœur Zend et les extensions étaient compilés **sans optimisation** : seul wasm-opt optimisait
+au link (`-O3` final), sans pouvoir remettre les variables en registres. Un micro-benchmark (boucle,
+tableaux, appels de méthodes) donnait le wasm 7 à 12 fois plus lent que PHP natif.
+
 **Vérifier qu'une fonction existe dans le wasm** : avant d'utiliser une nouvelle fonction PHP dans le
 jeu, il faut qu'elle soit dans le moteur. `get_loaded_extensions()` dans le wasm renvoie :
 `Core, date, pcre, zlib, bcmath, ctype, gd, hash, json, mbstring, random, Reflection, SDL, SDL_image,
