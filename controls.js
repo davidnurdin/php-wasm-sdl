@@ -18,6 +18,9 @@
  * appuie (la caméra avance en continu). Sur mobile il s'ouvre avec le bouton DEBUG en haut au centre.
  * Sur ordinateur, la barre contient aussi le bouton PLEIN ECRAN (ou double-clic sur le jeu).
  *
+ * Bouton ESC (Échap) : quitte la partie (retour au menu), ou revient à la page précédente d'un menu.
+ * Sur mobile il est en haut au centre, à côté de DEBUG ; sur ordinateur dans la barre.
+ *
  * À inclure en <script> classique après mobile.js. API : window.SonicControls = { key(name, down), start() }
  */
 (function () {
@@ -38,6 +41,7 @@
 		f3: [114, 'F3', 'F3', 0],
 		f4: [115, 'F4', 'F4', 0],
 		f6: [117, 'F6', 'F6', 0],
+		esc: [27, 'Escape', 'Escape', 0],
 	};
 	const holders = {}; // nom -> nombre de sources qui maintiennent la touche (doigts, boutons)
 
@@ -118,14 +122,19 @@ html.is-mobile #sc-debug {
 	margin: 0; padding: 8px; border-radius: 8px; background: rgba(0, 0, 40, .75); border: 2px solid #fff;
 }
 html.is-mobile #sc-debug:not(.sc-open) { display: none; }
+#sc-debug .sc-esc { background: #c81414; }
 /* en haut au centre : à droite il y a les scores du multijoueur, à gauche le HUD du jeu */
-#sc-debug-toggle {
+#sc-top {
 	position: fixed; z-index: 20; top: calc(2vmin + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+	display: none; gap: 8px;
+}
+#sc-top.sc-on { display: flex; }
+#sc-top button {
 	padding: 6px 10px; border-radius: 6px; border: 2px solid rgba(255, 255, 255, .6);
 	background: rgba(0, 0, 40, .45); color: rgba(255, 255, 255, .8);
-	font: bold 12px ui-monospace, Menlo, Consolas, monospace; touch-action: none; display: none;
+	font: bold 12px ui-monospace, Menlo, Consolas, monospace; touch-action: none;
 }
-#sc-debug-toggle.sc-on { display: block; }
+#sc-top button.sc-pressed { background: rgba(255, 216, 0, .85); color: #000; }
 `;
 	const style = document.createElement('style');
 	style.textContent = css;
@@ -137,6 +146,7 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 	debugPad.className = 'sm-keep';
 	debugPad.innerHTML = `
 		<button class="sc-fs" title="Plein écran (ou double-clic sur le jeu ; Échap pour sortir)">⛶ PLEIN ECRAN</button>
+		<button class="sc-esc" data-key="esc" title="Quitter la partie / menu précédent (Échap)">ESC</button>
 		<div class="sc-cross" title="Caméra libre (pavé numérique)">
 			<span></span><button data-key="kp8" title="Caméra haut (8)">8</button><span></span>
 			<button data-key="kp4" title="Caméra gauche (4)">4</button>
@@ -189,11 +199,19 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 	debugPad.addEventListener('mousedown', (e) => e.preventDefault());
 	debugPad.addEventListener('contextmenu', (e) => e.preventDefault());
 
-	const toggle = document.createElement('button');
-	toggle.id = 'sc-debug-toggle';
-	toggle.className = 'sm-keep';
-	toggle.textContent = 'DEBUG';
-	toggle.addEventListener('pointerdown', (e) => { e.preventDefault(); debugPad.classList.toggle('sc-open'); });
+	// mobile : ESC et DEBUG en haut au centre
+	const topBar = document.createElement('div');
+	topBar.id = 'sc-top';
+	topBar.className = 'sm-keep';
+	topBar.innerHTML = '<button class="sc-esc">ESC</button><button id="sc-debug-toggle">DEBUG</button>';
+	const escBtn = topBar.querySelector('.sc-esc');
+	escBtn.addEventListener('pointerdown', (e) => {
+		e.preventDefault();
+		escBtn.classList.add('sc-pressed');
+		setTimeout(() => escBtn.classList.remove('sc-pressed'), 150);
+		tapKey('esc', 120);
+	});
+	topBar.querySelector('#sc-debug-toggle').addEventListener('pointerdown', (e) => { e.preventDefault(); debugPad.classList.toggle('sc-open'); });
 
 	// ---------- tactile ----------
 	const touch = document.createElement('div');
@@ -305,18 +323,18 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 	function mount() {
 		const canvas = document.getElementById('canvas');
 		canvas.insertAdjacentElement('afterend', debugPad);
-		if (isMobile) document.body.append(touch, toggle);
+		if (isMobile) document.body.append(touch, topBar);
 		else canvas.addEventListener('dblclick', toggleFullscreen);
 	}
 	document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', mount) : mount();
 
 	window.SonicControls = {
 		key,
-		/** Appelé quand le jeu tourne : active la couche tactile et le bouton DEBUG (mobile). */
+		/** Appelé quand le jeu tourne : active la couche tactile et les boutons ESC / DEBUG (mobile). */
 		start() {
 			if (!isMobile) return;
 			touch.classList.add('sc-on');
-			toggle.classList.add('sc-on');
+			topBar.classList.add('sc-on');
 		},
 	};
 })();

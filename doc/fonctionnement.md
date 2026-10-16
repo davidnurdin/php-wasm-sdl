@@ -231,6 +231,9 @@ centre (hystérésis) : pas de clignotement. Le vertical est volontairement moin
 mouvement). La dérive du pouce pendant qu'on court est absorbée et ne déclenche pas de roulade par
 erreur, alors qu'un vrai glissé vers le bas la déclenche. Un petit cercle montre le centre et la position du doigt.
 
+**Bouton ESC** (touche Échap, keyCode 27) : quitte la partie et revient au menu ; dans un menu, revient à
+la page précédente. Mobile : en haut au centre, à gauche de DEBUG ; ordinateur : dans la barre sous le jeu.
+
 **Pad de debug** (ordinateur : sous le canvas ; mobile : bouton **DEBUG** en haut au centre) : boutons
 8 4 6 2 (caméra libre, maintenus = déplacement continu), 5 (Sonic suit la caméra), F3 / F4 (niveau
 précédent / suivant), F6 (panneau coordonnées + **FPS**). Utile aussi sur un portable sans pavé
@@ -251,12 +254,13 @@ Elles sont sauvegardées dans `var/options.json`, donc dans IndexedDB côté nav
 
 ## Multijoueur (menu MULTIJOUEUR)
 
-Contre des Sonic pilotés par l'ordinateur, sur un acte au choix (actes 1 et 2 de chaque zone). Le jeu
-en réseau est à faire : voir [`TODO-multijoueur-reseau.md`](../TODO-multijoueur-reseau.md).
+Contre des Sonic pilotés par l'ordinateur, sur un acte au choix (actes 1 et 2 de chaque zone). L'acte
+est chargé **sans badniks ni panneau de fin** (`GameObjectManager::$noEnemies`) ; les pièges (piques,
+canons...) restent. Le jeu en réseau est à faire : voir [`TODO-multijoueur-reseau.md`](../TODO-multijoueur-reseau.md).
 
 | Mode | Sonic | Règles |
 |---|---|---|
-| **COURSE** | 2 à 5 | Le premier au panneau de fin gagne. Quand un Sonic arrive, les autres ont encore 30 s |
+| **COURSE** | 2 à 5 | Le premier à la ligne d'arrivée (damier, à la place du panneau de fin) gagne. Quand un Sonic arrive, les autres ont encore 30 s |
 | **DRAPEAU** | 3 bleus contre 3 rouges | Tout le monde apparaît au hasard. Après le compte à rebours, un drapeau apparaît au sol, loin des joueurs. La première équipe qui le touche gagne (3 min au maximum) |
 | **ANNEAUX** | 2 à 5 | 3 min. Chaque anneau ramassé ou perdu réapparaît 1,5 s plus tard à un emplacement d'anneau vide de l'acte. Le plus d'anneaux gagne (pas de vie à 100, le compteur continue) |
 | **DEATHMATCH** | 2 à 5 | 3 min. Le plus de K.O. gagne, à égalité le moins de morts |
@@ -265,27 +269,38 @@ en réseau est à faire : voir [`TODO-multijoueur-reseau.md`](../TODO-multijoueu
 le fait pas le blesse. La victime perd ses anneaux et clignote 2 s. Sans anneaux, elle est K.O. : en
 course, elle repart du début ; en drapeau et en deathmatch, elle réapparaît ailleurs ; en mode anneaux,
 elle est seulement repoussée. Deux attaquants rebondissent l'un sur l'autre. En drapeau, seuls les
-joueurs de l'équipe adverse peuvent se blesser. Les morts « normales » (trou, badnik, piques) suivent les
+joueurs de l'équipe adverse peuvent se blesser. Les morts « normales » (trou, piques) suivent les
 règles du jeu, avec des vies infinies.
 
 **Code** (`src/Multiplayer/`) :
 
 - `Versus` : la partie. Il gère le compte à rebours, la simulation des bots (même physique et même
-  `CollisionSystem` que Sonic, mêmes pas de 1/120 s), les contacts, les anneaux, les règles des modes,
+  `CollisionSystem` que Sonic, par pas de 1/60 s au plus), les contacts, les anneaux, les règles des modes,
   les scores et les résultats. Il dessine aussi les autres Sonic et le drapeau dans la vue
   (`Scene::$worldOverlay`), puis, en pixels de fenêtre, les noms, les repères en bord d'écran, les scores,
   le compte à rebours et les résultats.
 - `Rival` : un participant. Le joueur humain utilise le `Player` du jeu ; ses anneaux, ses coups et ses
   morts passent par `GameObjectManager`. Chaque bot a son propre `Player`.
-- `BotBrain` : la manette d'un bot. Il va vers sa cible : le panneau, le drapeau, l'anneau le plus
+- `BotBrain` : la manette d'un bot. Il va vers sa cible : la ligne d'arrivée, le drapeau, l'anneau le plus
   proche ou l'adversaire le plus proche. Il saute devant un mur, un trou ou une cible en hauteur, et
   attaque un adversaire vulnérable. Il recule devant un adversaire qui attaque. S'il est coincé, il fait
   d'abord un saut plus haut, puis il est replacé : sur le chemin pris par le joueur en course, près de sa
   cible dans les autres modes. Son niveau (de 0,76 à 0,94) le fait hésiter de temps en temps.
 - Les bots sont dessinés avec des planches recolorées : `assets/tileset/sprites/tileset-sonic-<couleur>.png`,
   générées par `tools/soniccolors.py`. L'extension SDL n'a pas `SDL_SetTextureColorMod`.
-- Les bots ignorent les badniks, les moniteurs et les ressorts. Ils marchent sur les plateformes, grâce
-  au même `findObjectGround`.
+- Les bots ignorent les moniteurs et les ressorts. Ils marchent sur les plateformes, grâce au même
+  `findObjectGround`.
+
+**Performances et son** (le multijoueur coûte environ 5 ms de plus par frame que le jeu seul) :
+
+- bots simulés par pas de 1/60 s (Sonic : 1/120 s), au plus 4 pas par frame ;
+- anneau visé par un bot recherché deux fois par seconde seulement (et dès qu'il est pris) ; détection
+  des trous par sondes tous les 8 px ;
+- largeurs de texte mémorisées (`TextRenderer::width`) pour les scores redessinés à chaque frame ;
+- un même bruitage de `Versus` n'est rejoué qu'une fois toutes les 0,15 s (anneaux et rebonds des bots :
+  plus de « double son ») ;
+- tampon audio de 2048 échantillons (46 ms, `Mix_OpenAudio`) : dans le navigateur, le mixeur est
+  alimenté entre deux frames ; avec 1024, une frame lente vidait le tampon et le son ralentissait.
 
 Côté navigateur, rien de spécial : les commandes tactiles et clavier pilotent le Sonic du joueur, et le
 bouton de saut (tap) ferme l'écran des résultats.
