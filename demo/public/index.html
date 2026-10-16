@@ -115,9 +115,7 @@
 	// son premier tick pour rendre la main au navigateur.
 	\React\EventLoop\Loop::get()->futureTick(fn() => \React\EventLoop\Loop::get()->stop());
 
-	$GLOBALS['t0'] = microtime(true);
 	$app = include ('/src/src/app.php');
-	echo sprintf('[boot] php end %.0f ms', (microtime(true) - $GLOBALS['t0']) * 1000), PHP_EOL;
 
 	// Mobile / tablette : vue d'environ 192 px de haut (hauteur de la Master System, gros sprites) au lieu
 	// de ~426 px, et aussi large que l'écran : des tuiles jusqu'aux bords, pas de bandes noires.
