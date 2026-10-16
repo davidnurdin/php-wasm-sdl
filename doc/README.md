@@ -9,6 +9,7 @@ en natif (`php -d extension=sdl.so ... app.php`) et dans Chrome.
 |---|---|
 | [compilation.md](compilation.md) | Compiler toute la chaîne de A à Z : moteur wasm, synchro du jeu, packaging, déploiement |
 | [fonctionnement.md](fonctionnement.md) | Comment ça marche à l'exécution : C ↔ PHP ↔ JS, boucle de jeu, loader, sauvegardes, pièges wasm |
+| [../TODO-multijoueur-reseau.md](../TODO-multijoueur-reseau.md) | Note de travail : le multijoueur en réseau (à faire) |
 
 ## Démarrage rapide
 

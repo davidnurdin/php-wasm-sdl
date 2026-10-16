@@ -15,7 +15,7 @@
  *
  * Pad de debug (ordinateur et mobile) : caméra libre 8 4 6 2, 5 = Sonic suit la caméra,
  * F3 / F4 = niveau précédent / suivant, F6 = infos + FPS. Les boutons restent "enfoncés" tant qu'on
- * appuie (la caméra avance en continu). Sur mobile il s'ouvre avec le bouton DEBUG en haut à droite.
+ * appuie (la caméra avance en continu). Sur mobile il s'ouvre avec le bouton DEBUG en haut au centre.
  * Sur ordinateur, la barre contient aussi le bouton PLEIN ECRAN (ou double-clic sur le jeu).
  *
  * À inclure en <script> classique après mobile.js. API : window.SonicControls = { key(name, down), start() }
@@ -118,8 +118,9 @@ html.is-mobile #sc-debug {
 	margin: 0; padding: 8px; border-radius: 8px; background: rgba(0, 0, 40, .75); border: 2px solid #fff;
 }
 html.is-mobile #sc-debug:not(.sc-open) { display: none; }
+/* en haut au centre : à droite il y a les scores du multijoueur, à gauche le HUD du jeu */
 #sc-debug-toggle {
-	position: fixed; z-index: 20; top: calc(3vmin + env(safe-area-inset-top)); right: calc(3vmin + env(safe-area-inset-right));
+	position: fixed; z-index: 20; top: calc(2vmin + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
 	padding: 6px 10px; border-radius: 6px; border: 2px solid rgba(255, 255, 255, .6);
 	background: rgba(0, 0, 40, .45); color: rgba(255, 255, 255, .8);
 	font: bold 12px ui-monospace, Menlo, Consolas, monospace; touch-action: none; display: none;
