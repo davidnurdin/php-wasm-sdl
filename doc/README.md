@@ -59,7 +59,8 @@ tout est compilé dans des conteneurs.
 | `sync-game.exclude` | Fichiers propres au poste de dev, exclus dans les deux sens |
 | `patches/game/` | Adaptations wasm temporaires du jeu (vide : tout est intégré au jeu) |
 | `build-engine.sh` | Compile le moteur → `build/` |
-| `package.sh` | Package `demo/src` → `php-web.data`, injecte le loader, `--deploy` copie à la racine |
+| `package.sh` | Package `demo/src` → `php-web.data`, injecte le loader, écrit `version.json` (empreintes des fichiers, voir [cache et versions](fonctionnement.md#cache-et-versions)), `--deploy` copie à la racine |
+| `tools/dump-container.php` | Précompile le container Symfony du jeu (`cache/container.php`), lancé par `package.sh` avec le PHP natif |
 | `serve.sh` | Serveur HTTP local (`demo` ou `root`) |
 | `all.sh` | Enchaîne les quatre |
 | `demo/public/index.html` | Page de la démo : lance le wasm, code PHP de démarrage, sauvegardes |

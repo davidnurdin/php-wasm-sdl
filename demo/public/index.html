@@ -65,11 +65,11 @@
 </head>
 <body>
 <!-- Loader façon Sonic : visible tant que le wasm n'est pas prêt (API : window.SonicLoader, cf. loader.js) -->
-<script src="loader.js"></script>
+<script src="loader.js?v=5ba3c9c03a01"></script>
 <!-- Mobile / tablette : plein écran, paysage, sans debug (API : window.SonicMobile, cf. mobile.js) -->
-<script src="mobile.js"></script>
+<script src="mobile.js?v=99dac571ef38"></script>
 <!-- Commandes à l'écran -> vrais événements clavier : tactile (mobile) + pad de debug (API : window.SonicControls, cf. controls.js) -->
-<script src="controls.js"></script>
+<script src="controls.js?v=5863fea7d347"></script>
 <style>
 	/* Le jeu crée sa fenêtre avec SDL_WINDOW_RESIZABLE : le port emscripten de SDL2 prend alors la
 	   taille CSS du canvas comme taille de fenêtre (pas de zoom CSS, sinon SDL lit une taille faussée
@@ -115,7 +115,9 @@
 	// son premier tick pour rendre la main au navigateur.
 	\React\EventLoop\Loop::get()->futureTick(fn() => \React\EventLoop\Loop::get()->stop());
 
+	$GLOBALS['t0'] = microtime(true);
 	$app = include ('/src/src/app.php');
+	echo sprintf('[boot] php end %.0f ms', (microtime(true) - $GLOBALS['t0']) * 1000), PHP_EOL;
 
 	// Mobile / tablette : vue d'environ 192 px de haut (hauteur de la Master System, gros sprites) au lieu
 	// de ~426 px, et aussi large que l'écran : des tuiles jusqu'aux bords, pas de bandes noires.
@@ -140,12 +142,30 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 	// En WebGL c'est un appel bloquant : le navigateur attend la fin du travail du GPU (CPU et GPU ne
 	// travaillent plus en parallèle), 65 % du temps d'une image. Nos cibles (textures RGBA) sont toujours
 	// complètes : on répond directement.
+	//
+	// À la création du contexte, emscripten active toutes les extensions WebGL proposées
+	// (getSupportedExtensions().forEach(getExtension)) : certaines coûtent 100 à 250 ms chacune (texture
+	// compressée, depth clamp...) et SDL n'en utilise aucune. Il ne voit que celles qui servent.
+	const GL_EXTENSIONS = ['ANGLE_instanced_arrays', 'OES_vertex_array_object', 'WEBGL_draw_buffers',
+		'OES_element_index_uint', 'OES_standard_derivatives'];
 	for (const ctx of [window.WebGLRenderingContext, window.WebGL2RenderingContext]) {
-		if (ctx) ctx.prototype.checkFramebufferStatus = function () { return 0x8CD5; }; // FRAMEBUFFER_COMPLETE
+		if (!ctx) continue;
+		ctx.prototype.checkFramebufferStatus = function () { return 0x8CD5; }; // FRAMEBUFFER_COMPLETE
+		const supported = ctx.prototype.getSupportedExtensions;
+		ctx.prototype.getSupportedExtensions = function () {
+			return (supported.call(this) || []).filter((name) => GL_EXTENSIONS.includes(name));
+		};
 	}
 </script>
 <script type="module">
-	import phpBinary from "./php-web.mjs";
+	// Versions (empreintes) des fichiers, écrites par package.sh dans version.json : toujours relu sans
+	// cache, il fait charger la dernière version de php-web.mjs / .wasm / .data même si le navigateur
+	// garde les anciennes en cache HTTP (?v=<empreinte>). Le .wasm est gardé dans Cache Storage et le .data
+	// dans IndexedDB (--use-preload-cache) : rien n'est retéléchargé tant que la version ne change pas.
+	const version = await fetch('version.json', { cache: 'no-store' }).then((r) => r.ok ? r.json() : {}).catch(() => ({}));
+	const versioned = (file) => version[file] ? `${file}?v=${version[file]}` : file;
+	const { default: phpBinary } = await import('./' + versioned('php-web.mjs'));
+	console.info(`[boot] version ${version.build || '?'}`);
 
 	const loader = window.SonicLoader;
 	const debug = document.getElementById('debug');
@@ -169,7 +189,7 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 
 	// Téléchargement du .wasm avec progression (passé ensuite à emscripten via wasmBinary)
 	async function fetchWithProgress(url, onProgress) {
-		const response = await fetch(url);
+		const response = await cachedFetch(url);
 		if (!response.ok) throw new Error(`${url} : HTTP ${response.status}`);
 		// fetch compte les octets décompressés : Content-Length (taille compressée) n'est fiable que
 		// sans Content-Encoding ; sinon on prend la taille écrite par package.sh
@@ -193,10 +213,33 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 		return bytes.buffer;
 	}
 
+	// Cache Storage : la réponse de cette version si elle y est, sinon le réseau (gardée pour la prochaine
+	// visite, les autres versions du même fichier sont effacées). Sans Cache Storage : le réseau seul.
+	async function cachedFetch(url) {
+		let cache = null;
+		try { cache = await caches.open('sonic-php-wasm'); } catch (e) { /* navigation privée, http... */ }
+		const hit = cache && await cache.match(url).catch(() => null);
+		if (hit) {
+			console.info(`[boot] ${url} depuis le cache`);
+			return hit;
+		}
+		const response = await fetch(url);
+		if (cache && response.ok && url.includes('?v=')) {
+			const file = url.split('?')[0];
+			try {
+				for (const old of await cache.keys()) {
+					if (new URL(old.url).pathname.endsWith('/' + file)) await cache.delete(old);
+				}
+				await cache.put(url, response.clone());
+			} catch (e) { console.warn('[cache]', e); }
+		}
+		return response;
+	}
+
 	async function main() {
 		// 0-40 % : moteur (.wasm)
 		loader.status('Téléchargement du moteur PHP...');
-		const wasmBinary = await fetchWithProgress('php-web.wasm', loader.step(0, 0.4));
+		const wasmBinary = await fetchWithProgress(versioned('php-web.wasm'), loader.step(0, 0.4));
 		timing('wasm téléchargé');
 
 		// 40-90 % : données du jeu (php-web.data, progression émise par le loader de file_packager)
@@ -204,6 +247,8 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 		const { ccall, FS } = await phpBinary({
 			canvas: document.getElementById('canvas'),
 			wasmBinary,
+			// php-web.data (file_packager) : la version courante, pas une copie du cache HTTP
+			locateFile: (path, prefix) => path === 'php-web.data' ? versioned(path) : prefix + path,
 			setStatus(text) {
 				if (!text) return;
 				const m = /\((\d+)\/(\d+)\)/.exec(text);
@@ -263,7 +308,9 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 			// SONIC_FRAME_INTERVAL : une image de jeu à chaque requestAnimationFrame (100 au plus par seconde :
 			// sur un écran 120 Hz, une image sur deux)
 			const prelude = `define('SONIC_MOBILE', ${window.SonicMobile.isMobile ? 'true' : 'false'});\n`
-				+ `define('SONIC_FRAME_INTERVAL', 0.01);\n`;
+				+ `define('SONIC_FRAME_INTERVAL', 0.01);\n`
+				// app.php : container Symfony précompilé par package.sh (tools/dump-container.php)
+				+ `define('SONIC_CONTAINER_CACHE', true);\n`;
 			ccall("phpw_run", "void", ["string"], [prelude + document.getElementById('php').value]);
 		};
 		try {

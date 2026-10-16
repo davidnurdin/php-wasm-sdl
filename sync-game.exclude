@@ -13,3 +13,5 @@ crash.log
 /.castor.stub.php
 __pycache__
 /.wasm-sync
+# container Symfony précompilé par package.sh (tools/dump-container.php), propre au wasm
+/cache

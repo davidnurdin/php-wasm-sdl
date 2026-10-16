@@ -91,6 +91,10 @@ seconde (un écran 120 Hz fait une image de jeu sur deux, au lieu d'un rythme ir
 
 ## Performances (navigateur)
 
+À noter : les textures cibles de rendu (`SDL_CreateTexture(..., SDL_TEXTUREACCESS_TARGET)`) sont recopiées
+**sans transparence** (l'extension n'a pas `SDL_SetTextureBlendMode`). Les caches de tuiles et de textes
+du menu ne servent donc que pour ce qui est posé sur du noir.
+
 Mesuré avec le profiler de Chrome (CDP `Profiler.start`) et une instrumentation `microtime()` temporaire
 (temps de logique, scène, overlay, présentation par image) :
 
@@ -104,6 +108,27 @@ Mesuré avec le profiler de Chrome (CDP `Profiler.start`) et une instrumentation
 | Événement `collisionTile` émis à chaque pas de physique (vue de debug) | coût pour Sonic et chaque bot | émis seulement en mode debug (`CollisionSystem::$reportTiles`) |
 | Recherche du sol pixel par pixel dans les 32 lignes du bloc | coût par capteur et par pas | première ligne solide de chaque colonne gardée par bloc (`Level::getTileTopAt`) |
 | Zone de debug de la page réécrite à chaque ligne (texte sans fin) | page de plus en plus lente | 200 dernières lignes, réécrites au plus 2 fois par seconde |
+| Closure qui se replanifie (`use (&$tick)`) dans `GameLoop::start()` à chaque image | un cycle mémoire par image : mémoire qui grossit (~25 Ko/s), puis une longue collecte | un rappel créé une seule fois |
+| emscripten active **toutes** les extensions WebGL à la création du contexte | 1 à 2 s au démarrage (certaines coûtent 100-250 ms) | `getSupportedExtensions()` ne propose que celles qu'emscripten utilise (`index.html`) |
+| Container Symfony construit au démarrage (YAML + compilation) | ~0,5 s | précompilé au packaging (`tools/dump-container.php` → `cache/container.php`, chargé par `app.php` si `SONIC_CONTAINER_CACHE`) |
+
+## Cache et versions
+
+`package.sh` écrit `version.json` : la date du build et l'empreinte (sha256, 12 caractères) de
+`php-web.mjs`, `php-web.wasm` et `php-web.data`. Il ajoute aussi `?v=<empreinte>` aux scripts de la
+page (`loader.js`, `mobile.js`, `controls.js`).
+
+Au démarrage, `index.html` relit `version.json` **sans cache** (`cache: 'no-store'`), puis charge :
+
+- `php-web.mjs?v=…` (import dynamique) ;
+- `php-web.wasm?v=…` depuis **Cache Storage** (`sonic-php-wasm`) s'il y est ; sinon le réseau, puis
+  la réponse est gardée et les autres versions sont effacées ;
+- `php-web.data?v=…` (via `locateFile`) : file_packager le garde déjà dans IndexedDB
+  (`--use-preload-cache`), repéré par l'UUID du paquet ; le `?v=` évite de recevoir un ancien fichier
+  du cache HTTP avec un nouvel UUID.
+
+Une nouvelle version publiée est donc prise au chargement suivant, sans retélécharger ce qui n'a pas
+changé. Seul `index.html` peut rester en cache HTTP quelques minutes (GitHub Pages : `max-age=600`).
 
 ## Le système de fichiers
 
@@ -283,8 +308,8 @@ canons...) restent. Le jeu en réseau est à faire : voir [`TODO-multijoueur-res
 
 | Mode | Sonic | Règles |
 |---|---|---|
-| **COURSE** | 2 à 5 | Le premier à la ligne d'arrivée (damier, à la place du panneau de fin) gagne. Quand un Sonic arrive, les autres ont encore 30 s |
-| **DRAPEAU** | 3 bleus contre 3 rouges | Tout le monde apparaît au hasard. Après le compte à rebours, un drapeau apparaît au sol, loin des joueurs. La première équipe qui le touche gagne (3 min au maximum) |
+| **COURSE** | 2 à 5 (3 par défaut) | Le premier à la ligne d'arrivée (damier, à la place du panneau de fin) gagne. Quand un Sonic arrive, les autres ont encore 30 s |
+| **DRAPEAU** | 1 contre 1 à 3 contre 3 (2 contre 2 par défaut) | Chaque équipe a une base près d'un bout de l'acte (bleus à gauche, rouges à droite) et y apparaît. Après le compte à rebours, le drapeau apparaît à mi-chemin, le plus loin possible de tous. Il faut le prendre et le **ramener à sa base**. Son porteur va moins vite (×0,8) et le lâche s'il est touché, blessé ou tombe (personne ne peut le reprendre pendant 1 s). 3 drapeaux ramenés gagnent ; au bout de 3 min, l'équipe qui en a ramené le plus |
 | **ANNEAUX** | 2 à 5 | 3 min. Chaque anneau ramassé ou perdu réapparaît 1,5 s plus tard à un emplacement d'anneau vide de l'acte. Le plus d'anneaux gagne (pas de vie à 100, le compteur continue) |
 | **DEATHMATCH** | 2 à 5 | 3 min. Le plus de K.O. gagne, à égalité le moins de morts |
 
@@ -292,7 +317,13 @@ canons...) restent. Le jeu en réseau est à faire : voir [`TODO-multijoueur-res
 le fait pas le blesse. La victime perd ses anneaux et clignote 2 s. Sans anneaux, elle est K.O. : en
 course, elle repart du début ; en drapeau et en deathmatch, elle réapparaît ailleurs ; en mode anneaux,
 elle est seulement repoussée. Deux attaquants rebondissent l'un sur l'autre. En drapeau, seuls les
-joueurs de l'équipe adverse peuvent se blesser. Les morts « normales » (trou, piques) suivent les
+joueurs de l'équipe adverse peuvent se blesser. Les bots y courent moins vite que Sonic (300 px/s contre 500, porteur ×0,75) :
+ils foncent sur le drapeau, le ramènent, escortent leur porteur ou poursuivent celui d'en face. Dans une
+équipe d'au moins 2 bots, le dernier **défend** : il reste devant sa base, ne la quitte que pour un
+porteur adverse à moins de 900 px, ou un drapeau lâché tout près.
+
+Le menu MULTIJOUEUR enregistre `versusSonics` (2 à 5, 3 par défaut) et `versusTeam` (1 à 3 par équipe,
+2 par défaut) dans `var/options.json`. Les morts « normales » (trou, piques) suivent les
 règles du jeu, avec des vies infinies.
 
 **Code** (`src/Multiplayer/`) :
