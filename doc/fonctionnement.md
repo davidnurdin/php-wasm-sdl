@@ -88,6 +88,14 @@ seconde (un écran 120 Hz fait une image de jeu sur deux, au lieu d'un rythme ir
   une taille faussée et le canvas finissait en 3×3 px (le TODO « voir pk marche pas en web » de
   `Window.php`). La page donne maintenant une taille CSS explicite au canvas
   (`width: min(100%, …)` + `aspect-ratio: 840 / 426`) et ne met plus de `zoom`.
+- **Écrans à haute densité** (mobile : `devicePixelRatio` 2 à 3) : la fenêtre a aussi
+  `SDL_WINDOW_ALLOW_HIGHDPI`. Le canvas a donc la résolution réelle de l'écran (taille CSS ×
+  devicePixelRatio), et le zoom du jeu suit `SDL_GetRendererOutputSize`. Le canvas a en plus
+  `image-rendering: pixelated`, pour un agrandissement au plus proche voisin si le navigateur doit encore
+  l'agrandir. Sans cela, le navigateur l'agrandissait en bilinéaire et les textes « bavaient ».
+- Les écrans (titre, menus, bilans) sont dessinés **directement sur la fenêtre**, à l'échelle entière de
+  256×192 qui y tient (`Game::renderScreens`, `TextRenderer::$onWindow`). Avant, ils passaient par la vue
+  du jeu : sur un téléphone, ses 195 lignes donnaient une police TTF de 8 px ensuite agrandie ×6.
 
 ## Performances (navigateur)
 
@@ -300,6 +308,12 @@ Elles sont sauvegardées dans `var/options.json`, donc dans IndexedDB côté nav
 | **FILTRE CRT** ON / OFF | `Renderer/CrtFilter.php` : lignes de balayage (le bas de chaque ligne du jeu assombri) et coins assombris, dessinés sur l'image agrandie. Ce sont deux surfaces RGBA converties en textures, ce qui les rend transparentes : l'extension n'a ni `SDL_SetTextureBlendMode` ni `SDL_SetRenderDrawBlendMode`. Elles sont recréées seulement quand la taille change |
 | **VITESSE** PAL 50HZ (défaut) / NTSC 60HZ | La Master System européenne affiche 50 images/s, et Sonic (même ROM partout) fait une image de logique par image affichée. Toute la partie (Sonic, ennemis, animations, chrono du jeu) tourne donc à 50/60 = 83 % de la vitesse NTSC. Le jeu multiplie le temps de chaque frame par ce facteur. Records et ghosts restent comparables, car ils sont en temps de jeu. La musique n'est pas ralentie |
 
+**Pentes** (`CollisionSystem`, `UPHILL_PUSH`) : dans l'original, une pente à 45° tire Sonic vers le bas
+($1C/256 px/frame²) plus fort qu'il n'accélère ($10). Sans élan, il calait au milieu de la côte. Quand Sonic
+(ou un bot) court vers le haut d'une pente sans rouler, seuls 30 % de cette force s'appliquent, ce qui
+laisse une poussée nette de +$07 : on monte les côtes en courant. Immobile ou en roulade, la pente agit
+entièrement : on glisse vers le bas.
+
 ## Multijoueur (menu MULTIJOUEUR)
 
 Contre des Sonic pilotés par l'ordinateur, sur un acte au choix (actes 1 et 2 de chaque zone). L'acte
@@ -322,8 +336,8 @@ ils foncent sur le drapeau, le ramènent, escortent leur porteur ou poursuivent 
 équipe d'au moins 2 bots, le dernier **défend** : il reste devant sa base, ne la quitte que pour un
 porteur adverse à moins de 900 px, ou un drapeau lâché tout près.
 
-Le menu MULTIJOUEUR enregistre `versusSonics` (2 à 5, 3 par défaut) et `versusTeam` (1 à 3 par équipe,
-2 par défaut) dans `var/options.json`. Les morts « normales » (trou, piques) suivent les
+Le menu MULTIJOUEUR enregistre `versusSonics` (2 à 5, 3 par défaut), `versusTeam` (1 à 3 par équipe,
+2 par défaut) et `versusAi` (0 à 2) dans `var/options.json`. Les morts « normales » (trou, piques) suivent les
 règles du jeu, avec des vies infinies.
 
 **Code** (`src/Multiplayer/`) :
@@ -335,11 +349,23 @@ règles du jeu, avec des vies infinies.
   le compte à rebours et les résultats.
 - `Rival` : un participant. Le joueur humain utilise le `Player` du jeu ; ses anneaux, ses coups et ses
   morts passent par `GameObjectManager`. Chaque bot a son propre `Player`.
-- `BotBrain` : la manette d'un bot. Il va vers sa cible : la ligne d'arrivée, le drapeau, l'anneau le plus
-  proche ou l'adversaire le plus proche. Il saute devant un mur, un trou ou une cible en hauteur, et
-  attaque un adversaire vulnérable. Il recule devant un adversaire qui attaque. S'il est coincé, il fait
-  d'abord un saut plus haut, puis il est replacé : sur le chemin pris par le joueur en course, près de sa
-  cible dans les autres modes. Son niveau (de 0,76 à 0,94) le fait hésiter de temps en temps.
+- `BotBrain` : la manette d'un bot, conçue pour jouer « comme un humain ». Il va vers sa cible : la ligne
+  d'arrivée, le drapeau, l'anneau le plus proche ou l'adversaire le plus proche. Il ne la voit qu'avec un
+  **temps de réaction** : il redécide toutes les 0,12 à 0,32 s selon le niveau, sur la position vue à ce
+  moment-là. Il court, pentes comprises. Il ne saute que devant un vrai mur (solide à hauteur de tête
+  **et** de poitrine 16 px devant : une pente n'en est pas un), un trou, une cible sur un rebord, ou après
+  avoir poussé sans avancer pendant 0,45 s. Près d'un adversaire vulnérable, il **attaque** de temps en
+  temps (un saut, ou une roulade s'il va vite), puis reste au sol un moment, où il peut être touché à
+  son tour. Il ne recule devant une attaque que s'il la voit venir. Il hésite de temps en temps. S'il est
+  coincé, il fait d'abord un saut plus haut, puis il est replacé : sur le chemin pris par le joueur en
+  course, près de sa cible dans les autres modes.
+- **Niveau IA** (menu MULTIJOUEUR, option `versusAi`, MOYEN par défaut) :
+
+  | | Réaction | Attaque quand il peut | Repos après une attaque | Voit venir une attaque | Vitesse max |
+  |---|---|---|---|---|---|
+  | FACILE | 0,32 s | 35 % | 1,6 à 2,8 s | 25 % | course / drapeau ×0,85 ; autres modes 350 px/s |
+  | MOYEN | 0,2 s | 55 % | 1 à 2 s | 50 % | ×1 ; 425 px/s |
+  | DUR | 0,12 s | 80 % | 0,6 à 1,3 s | 80 % | ×1,12 ; 475 px/s |
 - Les bots sont dessinés avec des planches recolorées : `assets/tileset/sprites/tileset-sonic-<couleur>.png`,
   générées par `tools/soniccolors.py`. L'extension SDL n'a pas `SDL_SetTextureColorMod`.
 - Les bots ignorent les moniteurs et les ressorts. Ils marchent sur les plateformes, grâce au même
