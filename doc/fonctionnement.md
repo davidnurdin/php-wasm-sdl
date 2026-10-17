@@ -90,9 +90,11 @@ seconde (un écran 120 Hz fait une image de jeu sur deux, au lieu d'un rythme ir
   (`width: min(100%, …)` + `aspect-ratio: 840 / 426`) et ne met plus de `zoom`.
 - **Écrans à haute densité** (mobile : `devicePixelRatio` 2 à 3) : la fenêtre a aussi
   `SDL_WINDOW_ALLOW_HIGHDPI`. Le canvas a donc la résolution réelle de l'écran (taille CSS ×
-  devicePixelRatio), et le zoom du jeu suit `SDL_GetRendererOutputSize`. Le canvas a en plus
-  `image-rendering: pixelated`, pour un agrandissement au plus proche voisin si le navigateur doit encore
-  l'agrandir. Sans cela, le navigateur l'agrandissait en bilinéaire et les textes « bavaient ».
+  devicePixelRatio), et le zoom du jeu suit `SDL_GetRendererOutputSize`. Avant, le navigateur
+  l'agrandissait en bilinéaire et les textes « bavaient ». **Pas** d'`image-rendering: pixelated` : la
+  taille CSS du canvas n'est pas un nombre entier de pixels physiques (596,4 px par exemple), le navigateur
+  le met donc à l'échelle d'un facteur proche de 1. Au plus proche voisin, il doublait une rangée au milieu
+  de l'image, ce qui faisait une ligne noire sur les scanlines du filtre CRT.
 - Les écrans (titre, menus, bilans) sont dessinés **directement sur la fenêtre**, à l'échelle entière de
   256×192 qui y tient (`Game::renderScreens`, `TextRenderer::$onWindow`). Avant, ils passaient par la vue
   du jeu : sur un téléphone, ses 195 lignes donnaient une police TTF de 8 px ensuite agrandie ×6.

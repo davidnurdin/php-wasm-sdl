@@ -81,9 +81,9 @@
 		aspect-ratio: 840 / 426;
 		margin: 0 auto;
 		background: #111;
-		/* le canvas est en pixels CSS : sur un écran à devicePixelRatio 2 ou 3 (mobile), le navigateur
-		   l'agrandit ; en bilinéaire, les textes et les pixels « bavent » */
-		image-rendering: pixelated;
+		/* pas d'image-rendering: pixelated : le canvas a déjà la résolution de l'écran (SDL_WINDOW_ALLOW_HIGHDPI) ;
+		   sa taille CSS n'est pas entière en pixels physiques (596,4 px...) et le plus proche voisin
+		   doublait alors une rangée au milieu de l'image : une ligne noire sur les scanlines du filtre CRT */
 	}
 	/* bouton PLEIN ECRAN (controls.js) : le canvas prend tout l'écran, SDL suit sa taille CSS */
 	#canvas:fullscreen { width: 100vw; height: 100vh; aspect-ratio: auto; background: #000; }
