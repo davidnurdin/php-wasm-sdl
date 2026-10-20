@@ -67,7 +67,7 @@
 <!-- Loader façon Sonic : visible tant que le wasm n'est pas prêt (API : window.SonicLoader, cf. loader.js) -->
 <script src="loader.js?v=8fd80039a427"></script>
 <!-- Mobile / tablette : plein écran, paysage, sans debug (API : window.SonicMobile, cf. mobile.js) -->
-<script src="mobile.js?v=77432060e0c5"></script>
+<script src="mobile.js?v=4eb280e7ea4e"></script>
 <!-- Commandes à l'écran -> vrais événements clavier : tactile (mobile) + pad de debug (API : window.SonicControls, cf. controls.js) -->
 <script src="controls.js?v=5863fea7d347"></script>
 <!-- Multijoueur en ligne : WebSocket / WebRTC pour PHP (API : window.PhpWasmNetwork, github.com/davidnurdin/php-wasm-network).
@@ -310,6 +310,8 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 		await nextFrame();
 		await nextFrame();
 
+		await window.SonicSite.loadReplay(FS);
+
 		window.run = () => {
 			// SONIC_FRAME_INTERVAL : une image de jeu à chaque requestAnimationFrame (100 au plus par seconde :
 			// sur un écran 120 Hz, une image sur deux)
@@ -331,7 +333,9 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				+ `define('SONIC_MODE', ${phpString(params.get('mode'))});\n`
 				+ `define('SONIC_LEVEL', ${Number.parseInt(params.get('level'), 10) || 0});\n`
 				+ `define('SONIC_RETURN', ${window.SonicSite.back ? 'true' : 'false'});\n`
-				+ `define('SONIC_SITE_URL', ${phpString(window.SonicSite.origin)});\n`;
+				+ `define('SONIC_SITE_URL', ${phpString(window.SonicSite.origin)});\n`
+				// "Revoir" on the site (?replay=ID): the replay, fetched before (SonicSite.loadReplay)
+				+ `define('SONIC_REPLAY', ${phpString(window.SonicSite.replayFile)});\n`;
 			ccall("phpw_run", "void", ["string"], [prelude + document.getElementById('php').value]);
 		};
 		try {
@@ -452,6 +456,20 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				.catch(() => {});
 		};
 
+		// the replay of a game (Game::sendReplay, ReplayRecorder.php): to the player's account, if he has one
+		const sendReplay = (req) => {
+			const token = store.get('sonicStatsToken');
+			if (!token || !/^\/[\w\/.-]+\.json\.gz$/.test(String(req.file || ''))) return;
+			let bytes;
+			try { bytes = fs.readFile(String(req.file)); } catch (e) { return; }
+			let binary = '';
+			for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+			const body = JSON.stringify({ st: token, r: btoa(binary) });
+			fetch((store.get('sonicStatsSite') || SITES[0]) + '/api/replay', { method: 'POST', body, headers: { 'Content-Type': 'text/plain' } })
+				.then((r) => { if (r.status === 401 || r.status === 403) store.set('sonicStatsToken', null); })
+				.catch(() => {});
+		};
+
 		// SITE WEB of the title menu: the site in a new tab (only the site's own pages)
 		const openSite = (req) => {
 			try {
@@ -494,6 +512,7 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				if (req.t === 'share') share(req);
 				else if (req.t === 'back') goBack();
 				else if (req.t === 'open') openSite(req);
+				else if (req.t === 'replay') sendReplay(req);
 			}
 		};
 
@@ -502,6 +521,20 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 			room: /^[A-Z]{4}$/.test(room) ? room : '',
 			back,
 			origin: back ? new URL(back).origin : '',
+			replayFile: '',
+			// ?replay=ID ("Revoir" on the site): the file of the game, before PHP starts
+			async loadReplay(FS) {
+				const id = params.get('replay') || '';
+				if (!/^\d{1,10}$/.test(id)) return;
+				const site = SITES.includes(params.get('site')) ? params.get('site') : (back ? new URL(back).origin : SITES[0]);
+				try {
+					const response = await fetch(`${site}/api/replay/${id}`);
+					if (!response.ok) return;
+					const file = '/tmp/sonic-replay.json.gz';
+					FS.writeFile(file, new Uint8Array(await response.arrayBuffer()));
+					this.replayFile = file;
+				} catch (e) {}
+			},
 			start(FS) {
 				fs = FS;
 				setInterval(poll, 250);

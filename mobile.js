@@ -5,7 +5,8 @@
  *     l'utilisateur ; au toucher -> requestFullscreen() puis screen.orientation.lock('landscape') ;
  *   - si on sort du plein écran, l'écran revient pour le relancer ;
  *   - en portrait sans verrouillage possible (iPhone : ni Fullscreen API ni orientation.lock),
- *     écran "TOURNE TON APPAREIL".
+ *     écran "TOURNE TON APPAREIL", avec JOUER QUAND MEME (le jeu en portrait, bandes noires) : les navigateurs
+ *     intégrés (Facebook, Messenger, Instagram...) restent en portrait. Sur Android, OUVRIR DANS CHROME en plus.
  * Les gestes dans le jeu (glisser = directions, tap / bouton A = Espace) sont convertis en événements
  * clavier par controls.js.
  *
@@ -63,6 +64,12 @@ html.is-mobile #canvas {
 	width: 16vmin; height: 26vmin; max-width: 80px; max-height: 130px; border: 1.2vmin solid #fff;
 	border-radius: 2.5vmin; box-shadow: 4px 4px 0 #000; animation: sm-rotate 2s ease-in-out infinite;
 }
+.sm-screen .sm-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+.sm-screen .sm-button {
+	font: inherit; font-size: clamp(14px, 3.6vmin, 22px); color: #071a52; background: #ffd800; border: 0; border-radius: 999px;
+	padding: 12px 22px; text-shadow: none; box-shadow: 0 4px 0 #c98a00; letter-spacing: .04em;
+}
+.sm-screen .sm-button.sm-alt { background: #fff; box-shadow: 0 4px 0 #9aa; }
 @keyframes sm-blink { 50% { opacity: 0; } }
 @keyframes sm-spin { 0%, 100% { transform: scaleX(1); } 25% { transform: scaleX(.15); } 50% { transform: scaleX(-1); } 75% { transform: scaleX(.15); } }
 @keyframes sm-rotate { 0%, 20% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
@@ -87,16 +94,26 @@ html.is-mobile #canvas {
 		<div class="sm-ring"></div>
 		<div class="sm-big sm-blink">${fr ? 'TOUCHE POUR JOUER' : 'TAP TO PLAY'}</div>
 		<div class="sm-small">${fr ? 'PLEIN ECRAN - PAYSAGE' : 'FULL SCREEN - LANDSCAPE'}</div>`);
+	// the browsers inside the apps (Facebook, Messenger, Instagram...): no full screen, often stuck in portrait
+	const inApp = /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Messenger|MicroMessenger|Line\/|Snapchat|TikTok|musical_ly/i.test(navigator.userAgent);
+	const android = /Android/i.test(navigator.userAgent);
 	const rotateScreen = makeScreen(`
 		<div class="sm-phone"></div>
 		<div class="sm-big">${fr ? 'TOURNE TON APPAREIL' : 'TURN YOUR DEVICE'}</div>
-		<div class="sm-small">${fr ? 'LE JEU SE JOUE EN PAYSAGE' : 'THE GAME IS PLAYED IN LANDSCAPE'}</div>`);
+		<div class="sm-small">${fr ? 'LE JEU SE JOUE EN PAYSAGE' : 'THE GAME IS PLAYED IN LANDSCAPE'}</div>
+		<div class="sm-buttons">
+			<button type="button" class="sm-button" data-act="portrait">${fr ? 'JOUER QUAND MEME' : 'PLAY ANYWAY'}</button>
+			${inApp && android ? `<button type="button" class="sm-button sm-alt" data-act="chrome">${fr ? 'OUVRIR DANS CHROME' : 'OPEN IN CHROME'}</button>` : ''}
+		</div>`);
 
 	const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
 	const fsSupported = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
 	const portrait = matchMedia('(orientation: portrait)');
 	let started = false;
 	let orientationLocked = false;
+	// JOUER QUAND MEME: played in portrait, the screen doesn't come back
+	let portraitOk = false;
+	try { portraitOk = sessionStorage.getItem('sonicPortrait') === '1'; } catch (e) {}
 
 	async function enterFullscreen() {
 		const el = document.documentElement;
@@ -123,11 +140,23 @@ html.is-mobile #canvas {
 		const needTap = fsSupported && !fsElement();
 		tapScreen.classList.toggle('sm-visible', needTap);
 		// portrait non verrouillable : on demande de tourner l'appareil
-		rotateScreen.classList.toggle('sm-visible', !needTap && portrait.matches && !orientationLocked);
+		rotateScreen.classList.toggle('sm-visible', !needTap && portrait.matches && !orientationLocked && !portraitOk);
 		// SDL (fenêtre RESIZABLE) suit la taille CSS du canvas sur l'événement resize
 		window.dispatchEvent(new Event('resize'));
 	}
 
+	rotateScreen.addEventListener('click', (e) => {
+		const act = e.target.closest('[data-act]')?.dataset.act;
+		if (act === 'portrait') {
+			portraitOk = true;
+			try { sessionStorage.setItem('sonicPortrait', '1'); } catch (err) {}
+			refresh();
+		} else if (act === 'chrome') {
+			// Android: the same page in Chrome (full screen, landscape)
+			location.href = 'intent://' + location.host + location.pathname + location.search + location.hash
+				+ '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(location.href) + ';end';
+		}
+	});
 	tapScreen.addEventListener('click', enterFullscreen);
 	tapScreen.addEventListener('touchend', (e) => { e.preventDefault(); enterFullscreen(); });
 	document.addEventListener('fullscreenchange', () => { if (!fsElement()) orientationLocked = false; refresh(); });
