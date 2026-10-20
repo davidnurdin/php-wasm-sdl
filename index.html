@@ -312,12 +312,17 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 		window.run = () => {
 			// SONIC_FRAME_INTERVAL : une image de jeu à chaque requestAnimationFrame (100 au plus par seconde :
 			// sur un écran 120 Hz, une image sur deux)
+			// a value of the page's URL in PHP code: base64 (in a PHP string, "$" or "{$" would run code)
+			const phpString = (v) => `base64_decode('${btoa(unescape(encodeURIComponent(v || '')))}')`;
+			const params = new URLSearchParams(location.search);
 			const prelude = `define('SONIC_MOBILE', ${window.SonicMobile.isMobile ? 'true' : 'false'});\n`
 				+ `define('SONIC_FRAME_INTERVAL', 0.01);\n`
 				// app.php : container Symfony précompilé par package.sh (tools/dump-container.php)
 				+ `define('SONIC_CONTAINER_CACHE', true);\n`
 				// Multijoueur en ligne : serveur relais (?net=... ; sinon le serveur de prod, sinon celui de la page)
-				+ `define('SONIC_NET_URL', ${JSON.stringify(new URLSearchParams(location.search).get('net') || window.SONIC_NET_URL || '')});\n`;
+				+ `define('SONIC_NET_URL', ${phpString(params.get('net') || window.SONIC_NET_URL)});\n`
+				// le nom du compte du site (sonic.mimichat.fr, bouton JOUER : ?name=...) : le nom en ligne
+				+ `define('SONIC_PLAYER_NAME', ${phpString(params.get('name'))});\n`;
 			ccall("phpw_run", "void", ["string"], [prelude + document.getElementById('php').value]);
 		};
 		try {
