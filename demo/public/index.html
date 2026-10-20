@@ -71,9 +71,9 @@
 <!-- Commandes à l'écran -> vrais événements clavier : tactile (mobile) + pad de debug (API : window.SonicControls, cf. controls.js) -->
 <script src="controls.js?v=5863fea7d347"></script>
 <!-- Multijoueur en ligne : WebSocket / WebRTC pour PHP (API : window.PhpWasmNetwork, github.com/davidnurdin/php-wasm-network).
-     Serveur relais : ?net=wss://hote/ws dans l'URL, sinon window.SONIC_NET_URL ci-dessous. -->
-<script src="php-wasm-network.js?v=3ae200342578"></script>
-<script>window.SONIC_NET_URL = window.SONIC_NET_URL || '';</script>
+     Serveur relais : ?net=wss://hote/ws dans l'URL, sinon window.SONIC_NET_URL ci-dessous (VPS : /mimichatPROD/sonicGameServerPhp). -->
+<script src="php-wasm-network.js?v=e4e5d0ec6e1b"></script>
+<script>window.SONIC_NET_URL = window.SONIC_NET_URL || 'wss://ssh.mimichat.fr/ws';</script>
 <style>
 	/* Le jeu crée sa fenêtre avec SDL_WINDOW_RESIZABLE : le port emscripten de SDL2 prend alors la
 	   taille CSS du canvas comme taille de fenêtre (pas de zoom CSS, sinon SDL lit une taille faussée

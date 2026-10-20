@@ -7,11 +7,9 @@ Le multijoueur en ligne est en place (voir `doc/fonctionnement.md`, section « M
 
 ## Reste à faire
 
-- **Déployer le serveur** sur le VPS (`server/docker-compose.yml` de php-wasm-network : DOMAIN, TURN), puis
-  mettre son adresse dans `window.SONIC_NET_URL` (index.html). En attendant, le mode en ligne se teste
-  avec `?net=ws://localhost:8090/ws` et `php server/bin/server.php`.
-- Serveurs TURN dans la page (`PhpWasmNetwork.defaults.iceServers`) pour WebRTC derrière les NAT stricts.
-  Sans TURN, ces joueurs restent sur le relais, ce qui marche aussi.
+- Serveur déployé : `wss://ssh.mimichat.fr/ws` (VPS, `/mimichatPROD/sonicGameServerPhp`, relais + Caddy
+  derrière Traefik + coturn sur 3480). À terme, un nom de domaine dédié (changer `DOMAIN` dans `.env` et
+  `window.SONIC_NET_URL`).
 - Les moniteurs, ressorts et plateformes restent propres à chaque machine (ils ne sont pas synchronisés).
 - Les frames tirées de la planche ROM (attente, ressort, toboggan) restent bleues pour un joueur d'une
   autre couleur.

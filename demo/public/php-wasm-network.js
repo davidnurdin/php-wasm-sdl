@@ -78,6 +78,10 @@
 			let m;
 			try { m = JSON.parse(json); } catch (e) { return; }
 			switch (m.t) {
+				case 'hello':
+					// STUN / TURN of the server (short-lived credentials), unless the page chose its own
+					if (Array.isArray(m.ice) && m.ice.length && !this.options.iceServers) this.iceServers = DEFAULT_ICE.concat(m.ice);
+					break;
 				case 'room':
 					this.me = m.peer;
 					this.members = new Set(m.peers);
@@ -115,7 +119,8 @@
 
 		connectPeer(id, initiator) {
 			if (this.peers.has(id)) return this.peers.get(id);
-			const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+			// iceTransportPolicy 'relay': through TURN only (tests, or to hide the players' addresses from each other)
+			const pc = new RTCPeerConnection({ iceServers: this.iceServers, iceTransportPolicy: this.options.iceTransportPolicy || 'all' });
 			const peer = { pc, r: null, u: null, direct: false, chain: Promise.resolve(), timer: 0 };
 			this.peers.set(id, peer);
 			pc.onicecandidate = (e) => { if (e.candidate) this.text({ t: 'signal', to: id, data: { candidate: e.candidate.toJSON() } }); };
@@ -294,6 +299,26 @@
 		close(handle) {
 			const c = connections.get(handle);
 			if (c) c.close();
+		},
+		/**
+		 * The path to each direct peer: {peer: {local, remote, rtt}} where local / remote are the ICE candidate
+		 * types in use ('host', 'srflx': through a NAT with STUN, 'relay': through TURN) and rtt in ms.
+		 */
+		async stats(handle) {
+			const c = connections.get(handle);
+			const out = {};
+			if (!c) return out;
+			for (const [id, peer] of c.peers) {
+				if (!peer.direct) continue;
+				const report = await peer.pc.getStats();
+				let pair = null;
+				report.forEach((s) => { if (s.type === 'candidate-pair' && s.state === 'succeeded' && (s.nominated || s.selected)) pair = s; });
+				if (!pair) continue;
+				const type = (cid) => { const s = report.get(cid); return s ? s.candidateType : '?'; };
+				out[id] = { local: type(pair.localCandidateId), remote: type(pair.remoteCandidateId),
+					rtt: pair.currentRoundTripTime !== undefined ? Math.round(pair.currentRoundTripTime * 1000) : null };
+			}
+			return out;
 		},
 		/** Defaults for every connection, e.g. PhpWasmNetwork.defaults.iceServers = [{urls: 'turn:...', ...}]. */
 		defaults: {},

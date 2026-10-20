@@ -404,6 +404,15 @@ Composer du jeu, écrite pour ce projet. Le même code PHP marche dans le naviga
   L'adresse est donnée par `?net=wss://hote/ws` dans l'URL de la page, sinon par `window.SONIC_NET_URL`
   (index.html), puis passée au jeu par la constante `SONIC_NET_URL`. En natif, c'est la variable
   d'environnement `SONIC_NET_URL`. Par défaut : `ws://localhost:8090/ws`.
+- **Serveur en ligne** : `wss://ssh.mimichat.fr/ws` (valeur par défaut de `window.SONIC_NET_URL` dans
+  index.html), sur le VPS dans `/mimichatPROD/sonicGameServerPhp` (`docker compose`) :
+  - `relay` : le serveur PHP de php-wasm-network (cloné et reconstruit par `update.sh [ref]`) ;
+  - `caddy` : le TLS (Let's Encrypt) ; Traefik, déjà en place sur 80/443, lui passe `ssh.mimichat.fr`
+    (routeur HTTP sur 80 pour le certificat, routeur TCP `HostSNI` en `tls.passthrough` sur 443) ;
+    `/ws` et `/health` vont au relais ;
+  - `coturn` : STUN/TURN sur le port 3480 (UDP et TCP), relais 49300-49340, distinct du coturn de
+    chat.mimichat.fr. Le secret est dans `.env` ; le relais donne à chaque joueur des identifiants TURN
+    temporaires dans son message `hello`, pour WebRTC derrière les NAT stricts.
 
 **Menu** :
 - EN LIGNE → CREER UN SALON : le code s'affiche ;
@@ -442,7 +451,8 @@ Composer du jeu, écrite pour ce projet. Le même code PHP marche dans le naviga
   déterministe entre machines (et encore moins entre wasm 32 bits et PHP natif 64 bits).
 
 **Tests** : deux fenêtres Chromium (une par joueur, car un onglet en arrière-plan n'a plus de
-`requestAnimationFrame`) et le serveur local, en WEBRTC comme en WEBSOCKET. Testés :
+`requestAnimationFrame`), avec le serveur local puis celui du VPS, en WEBRTC comme en WEBSOCKET, et en
+TURN seul (`iceTransportPolicy: 'relay'`, test de php-wasm-network). Testés :
 - le salon, le lancement simultané et un coup porté d'une machine à l'autre ;
 - les anneaux redistribués et les équipes du drapeau ;
 - le départ d'un joueur (un bot le remplace) et celui de l'hôte.
