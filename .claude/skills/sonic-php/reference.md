@@ -58,6 +58,14 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
 - Réseau : dépendance Composer `davidnurdin/php-wasm-network: dev-main` (dépôt VCS GitHub). `vendor/`
   n'est pas suivi, `composer.lock` l'est.
 - `start.sh` : lance la version desktop (`SONIC_PHP=php8.3 ./start.sh` pour un autre PHP).
+- Replays : `Save/ReplayRecorder.php` enregistre chaque partie (acte seul, match contre l'ordinateur ou en
+  ligne : positions et images des Sonic à 30 i/s, blocs changés) dans `var/replays/last.json.gz`, puis
+  `Bridge::send(['t' => 'replay', 'file' => ...])` ; la page l'envoie au site. `Scene/ReplayPlayer.php` le
+  rejoue quand `SONIC_REPLAY` (chemin du fichier) est défini. Un match en ligne a un id commun
+  (`startConfig['id']`, `Versus::matchId()`).
+- Test natif d'un replay : `var/` appartient à root sur le PC (start.sh passe par sudo) ; pour un script de
+  test lancé sans sudo, créer d'abord `var/replays` à soi (`sudo -n mkdir -p var/replays && sudo -n chown
+  david: var/replays`), sinon rien n'est écrit (sans erreur).
 
 ## 2. Le moteur et la page : `/home/david/poc/wasm/lite/php-wasm` (dépôt `php-wasm-sdl`)
 
@@ -124,6 +132,11 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
   - `/statistiques` (connecté) et `POST /api/stats` (la page du jeu, `text/plain`, jeton `StatsToken`,
     plafonds par envoi, limiteur `stats` 240/h par compte, CORS pour l'origine de `GAME_URL` et localhost) ;
   - `/jouer` : `GAME_URL?lang=&name=&st=&site=` ;
+  - `/historique` (`?voir=moi` : mes parties), `POST /api/replay` (`{st, r: base64 du gzip}`, limiteur
+    `replay` 60/h, 4 Mo, 300 gardés par compte, un match en ligne une fois par joueur) et
+    `GET /api/replay/{id}` (le gzip tel quel, CORS `*`). Revoir = `GAME_URL?lang=&site=&back=&replay=ID` :
+    la page télécharge le replay avant de lancer PHP (`SonicSite.loadReplay`, `SONIC_REPLAY`) ;
+  - `/joueurs` (membres paginés), `/sitemap.xml`, `/api/jeu` (joueurs dans le jeu, `GamePresence`) ;
   - `/langue/{fr|en}?back=/chemin` : cookie `lang` (sinon `Accept-Language`, `LocaleSubscriber`) ;
   - `/inscription`, `/connexion`, `/deconnexion`, `/editeur`, `/presence`.
 - `PlayerStats` (table `player_stats`, clé = l'utilisateur, `ON DELETE CASCADE`) : `totals` en JSON, les
