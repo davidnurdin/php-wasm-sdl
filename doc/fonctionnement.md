@@ -415,7 +415,10 @@ Composer du jeu, écrite pour ce projet. Le même code PHP marche dans le naviga
     temporaires dans son message `hello`, pour WebRTC derrière les NAT stricts.
 
 **Menu** :
-- EN LIGNE → CREER UN SALON : le code s'affiche ;
+- EN LIGNE → SALON PUBLIC : avec des inconnus, sans code. Le serveur met le joueur dans le salon public
+  qui a le plus de joueurs et une place libre (même version du jeu), sinon en ouvre un. Pendant une
+  partie, l'hôte le ferme aux nouveaux venus (`lockRoom`), et le rouvre au retour dans le salon ;
+- SALON PRIVE : le code s'affiche, à donner à ses amis ;
 - REJOINDRE : le code se tape au clavier à l'écran (Échap annule) ;
 - NOM : le nom vu par les autres joueurs (8 caractères, mémorisé dans `onlineName`). Il est demandé au
   premier CREER UN SALON / REJOINDRE ;
@@ -424,6 +427,11 @@ Composer du jeu, écrite pour ce projet. Le même code PHP marche dans le naviga
   php-wasm-network) ;
 - dans le salon, les noms des joueurs (le sien en jaune), l'hôte, le ping, et le mode et la zone de
   l'hôte (envoyés avec la liste des joueurs : `Online::$info`) ;
+- PARLER : un message de 30 caractères (A-Z, chiffres, `. - ! ?`) tapé sur le clavier à l'écran ou au
+  vrai clavier (Entrée envoie, Échap annule), un par seconde au plus. Les 3 dernières lignes s'affichent
+  dans le salon, avec les arrivées et les départs (`Online::CHAT`, `Online::$chat`) ;
+- `Online::VERSION` est dans le meta des salons : un joueur avec une autre version (vieille page en
+  cache) ne peut pas entrer (« AUTRE VERSION  RECHARGE LA PAGE ») ;
 - l'hôte (celui qui a créé le salon) lance la partie avec les réglages de sa page MULTIJOUEUR (mode,
   zone, IA, nombre de Sonic) ;
 - jusqu'à 6 joueurs ; les places restantes sont prises par des bots. En drapeau, les joueurs sont
@@ -449,8 +457,14 @@ Composer du jeu, écrite pour ce projet. Le même code PHP marche dans le naviga
   Dans l'autre sens, le joueur envoie `lost` (anneaux perdus, que l'hôte répartit) et `died`.
 - Les autres Sonic sont affichés **avec 120 ms de retard**, entre deux positions reçues (interpolation),
   ce qui donne un mouvement fluide malgré les 20 envois par seconde.
-- Anneaux ramassés : `Level::$tileListener` signale chaque bloc d'anneaux modifié ; le joueur l'envoie à
-  l'hôte, qui l'applique et le transmet à tous.
+- Anneaux ramassés et ponts qui s'effondrent : `Level::$tileListener` signale chaque bloc modifié ; le
+  joueur l'envoie à l'hôte, qui l'applique et le transmet à tous (`GameObjectManager::collapseBridge`
+  fait tomber les morceaux du pont chez les autres).
+- Moniteurs cassés et badniks détruits : `GameObjectManager::$objectListener` donne leur numéro dans
+  l'acte, envoyé (`gone`) puis retiré chez tous (`removeObject`, sans donner l'objet). En multijoueur, ils
+  ne reviennent pas quand un joueur réapparaît, comme les anneaux.
+- Les poses tirées de la planche ROM (ressort, toboggan, attente) sont envoyées avec l'image
+  (`Player::getDrawnFrame`, bit 7 de l'état).
 - Chaque joueur garde la couleur de son emplacement sur tous les écrans (`Player::setSheet`).
 - Un joueur part : un bot reprend son Sonic. L'hôte part : la partie s'arrête chez les autres
   (« L HOTE EST PARTI »), avec le classement du moment.
