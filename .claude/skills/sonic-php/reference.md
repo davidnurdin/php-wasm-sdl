@@ -137,6 +137,11 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
     `GET /api/replay/{id}` (le gzip tel quel, CORS `*`). Revoir = `GAME_URL?lang=&site=&back=&replay=ID` :
     la page télécharge le replay avant de lancer PHP (`SonicSite.loadReplay`, `SONIC_REPLAY`) ;
   - `/joueurs` (membres paginés), `/sitemap.xml`, `/api/jeu` (joueurs dans le jeu, `GamePresence`) ;
+  - éditeurs (`EditorController`, détail dans le README du site) : `/editeur`, `/niveau/{id}` (+ `/editer`,
+    `.json`, `.png`), `/tiles/{id}` (+ `/editer`, `.json`, `.png`). Niveaux et tiles au format du jeu (blocs
+    de 32 px, un octet de collision par bloc, 47 formes) ; les zones du jeu viennent de `data/game/`
+    (`tools/game-data.py <jeu>`, puis `app:zones` au démarrage du conteneur). Pas encore jouables dans le jeu.
+    Après un test : `delete from user` efface aussi niveaux et tiles des comptes (pas les zones) ;
   - `/langue/{fr|en}?back=/chemin` : cookie `lang` (sinon `Accept-Language`, `LocaleSubscriber`) ;
   - `/inscription`, `/connexion`, `/deconnexion`, `/editeur`, `/presence`.
 - `PlayerStats` (table `player_stats`, clé = l'utilisateur, `ON DELETE CASCADE`) : `totals` en JSON, les
