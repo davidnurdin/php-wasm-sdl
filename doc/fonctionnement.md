@@ -417,23 +417,30 @@ Composer du jeu, écrite pour ce projet. Le même code PHP marche dans le naviga
 **Menu** :
 - EN LIGNE → CREER UN SALON : le code s'affiche ;
 - REJOINDRE : le code se tape au clavier à l'écran (Échap annule) ;
-- RESEAU WEBRTC / WEBSOCKET : le choix est mémorisé dans `versusNet` ;
-- dans le salon, la liste des joueurs avec leur ping, et « P2P » quand la liaison WebRTC directe est
-  ouverte ;
+- NOM : le nom vu par les autres joueurs (8 caractères, mémorisé dans `onlineName`). Il est demandé au
+  premier CREER UN SALON / REJOINDRE ;
+- pas de choix du réseau : dans le navigateur, WebRTC entre les joueurs, et le serveur relaie (WebSocket)
+  ceux qu'il n'arrive pas à relier (WebRTC absent, connexion échouée ou pas ouverte en 10 s,
+  php-wasm-network) ;
+- dans le salon, les noms des joueurs (le sien en jaune), l'hôte, le ping, et le mode et la zone de
+  l'hôte (envoyés avec la liste des joueurs : `Online::$info`) ;
 - l'hôte (celui qui a créé le salon) lance la partie avec les réglages de sa page MULTIJOUEUR (mode,
   zone, IA, nombre de Sonic) ;
 - jusqu'à 6 joueurs ; les places restantes sont prises par des bots. En drapeau, les joueurs sont
-  répartis entre les deux équipes.
+  répartis entre les deux équipes, et le côté de chaque base (gauche ou droite) est tiré au sort par
+  l'hôte (`swap` du START ; hors ligne aussi, à chaque partie).
 
 **Qui décide** (`src/Multiplayer/Online.php`, `VersusNetwork.php`, trait de `Versus`) :
 
 - **Chaque joueur simule son propre Sonic** sur sa machine : aucun retard pour lui. Il envoie son état
   30 fois par seconde à l'hôte (`STATE` : position, vitesse, image d'animation, attaque, anneaux, bouclier,
-  mort), en message non fiable.
+  invincibilité, mort), en message non fiable.
 - **L'hôte fait autorité** : son `Versus` fait tourner les bots et toutes les règles (contacts, anneaux
   redistribués, drapeau, ligne d'arrivée, scores, chrono). Les autres joueurs sont chez lui des
   « marionnettes » (`Rival::$puppet`) placées par leur état. Il diffuse l'état complet 20 fois par seconde
-  (`SNAPSHOT`, environ 30 octets par Sonic).
+  (`SNAPSHOT`, environ 30 octets par Sonic, avec le bouclier et l'invincibilité, dessinés sur les autres
+  Sonic comme sur le sien : anneau du bouclier une image sur deux, étoiles qui tournent).
+  Un joueur invincible attaque au contact et ne peut pas être touché, chez l'hôte comme chez lui.
 - Les événements fiables (`EVENT`, JSON) vont de l'hôte au joueur concerné :
   - `place` : sa place de départ ;
   - `hurt` : touché par un Sonic, le joueur applique alors chez lui les mêmes règles qu'un coup local ;
