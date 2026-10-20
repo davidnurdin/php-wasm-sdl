@@ -24,7 +24,7 @@
 	<meta property="og:image" content="https://davidnurdin.github.io/php-wasm-sdl/assets/og-image.png" />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
-	<meta property="og:image:alt" content="Écran titre de Sonic qui tourne en PHP dans le navigateur" />
+	<meta property="og:image:alt" content="Sonic PHP : des Sonic de toutes les couleurs à Green Hill" />
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content="Sonic en PHP : jouable dans le navigateur" />
 	<meta name="twitter:description" content="PHP + SDL2 en WebAssembly : Sonic jouable sur ordinateur, Android et iPhone." />
@@ -452,6 +452,29 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				.catch(() => {});
 		};
 
+		// SITE WEB of the title menu: the site in a new tab (only the site's own pages)
+		const openSite = (req) => {
+			try {
+				const url = new URL(String(req.url || ''));
+				if (SITES.includes(url.origin)) window.open(url.href, '_blank', 'noopener');
+			} catch (e) {}
+		};
+
+		// "in the game right now": the site counts the open games (POST /api/jeu every 45 s, one id per tab)
+		let tabId = null;
+		try { tabId = sessionStorage.getItem('sonicTab'); } catch (e) {}
+		if (!tabId) {
+			tabId = Math.random().toString(36).slice(2, 14);
+			try { sessionStorage.setItem('sonicTab', tabId); } catch (e) {}
+		}
+		const heartbeat = (leaving) => {
+			const site = SITES.includes(params.get('site')) ? params.get('site') : (store.get('sonicStatsSite') || SITES[0]);
+			const body = JSON.stringify({ id: tabId, name: params.get('name') || '', bye: !!leaving });
+			if (leaving && navigator.sendBeacon) { navigator.sendBeacon(site + '/api/jeu', new Blob([body], { type: 'text/plain' })); return; }
+			if (document.hidden) return;
+			fetch(site + '/api/jeu', { method: 'POST', body, headers: { 'Content-Type': 'text/plain' }, keepalive: true }).catch(() => {});
+		};
+
 		const goBack = () => {
 			sendStats(true);
 			Promise.resolve(window.saveUserFiles && window.saveUserFiles()).finally(() => { location.href = back || SITES[0]; });
@@ -470,6 +493,7 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				try { req = JSON.parse(line); } catch (e) { continue; }
 				if (req.t === 'share') share(req);
 				else if (req.t === 'back') goBack();
+				else if (req.t === 'open') openSite(req);
 			}
 		};
 
@@ -482,7 +506,10 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				fs = FS;
 				setInterval(poll, 250);
 				setInterval(() => sendStats(false), 60000);
-				addEventListener('pagehide', () => sendStats(true));
+				heartbeat(false);
+				setInterval(() => heartbeat(false), 45000);
+				document.addEventListener('visibilitychange', () => !document.hidden && heartbeat(false));
+				addEventListener('pagehide', () => { sendStats(true); heartbeat(true); });
 				document.addEventListener('visibilitychange', () => document.hidden && sendStats(true));
 			},
 		};
