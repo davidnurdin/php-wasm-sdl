@@ -404,10 +404,11 @@ Composer du jeu, écrite pour ce projet. Le même code PHP marche dans le naviga
   L'adresse est donnée par `?net=wss://hote/ws` dans l'URL de la page, sinon par `window.SONIC_NET_URL`
   (index.html), puis passée au jeu par la constante `SONIC_NET_URL`. En natif, c'est la variable
   d'environnement `SONIC_NET_URL`. Par défaut : `ws://localhost:8090/ws`.
-- **Serveur en ligne** : `wss://ssh.mimichat.fr/ws` (valeur par défaut de `window.SONIC_NET_URL` dans
-  index.html), sur le VPS dans `/mimichatPROD/sonicGameServerPhp` (`docker compose`) :
+- **Serveur en ligne** : `wss://sonic.mimichat.fr/ws` (valeur par défaut de `window.SONIC_NET_URL` dans
+  index.html ; `ssh.mimichat.fr`, l'ancien nom, marche encore pour les pages en cache), sur le VPS dans
+  `/mimichatPROD/sonicGameServerPhp` (`docker compose`, copie dans php-wasm-network `server/deploy-traefik`) :
   - `relay` : le serveur PHP de php-wasm-network (cloné et reconstruit par `update.sh [ref]`) ;
-  - `caddy` : le TLS (Let's Encrypt) ; Traefik, déjà en place sur 80/443, lui passe `ssh.mimichat.fr`
+  - `caddy` : le TLS (Let's Encrypt) ; Traefik, déjà en place sur 80/443, lui passe ses deux noms
     (routeur HTTP sur 80 pour le certificat, routeur TCP `HostSNI` en `tls.passthrough` sur 443) ;
     `/ws` et `/health` vont au relais ;
   - `coturn` : STUN/TURN sur le port 3480 (UDP et TCP), relais 49300-49340, distinct du coturn de
@@ -460,11 +461,30 @@ Composer du jeu, écrite pour ce projet. Le même code PHP marche dans le naviga
 - Anneaux ramassés et ponts qui s'effondrent : `Level::$tileListener` signale chaque bloc modifié ; le
   joueur l'envoie à l'hôte, qui l'applique et le transmet à tous (`GameObjectManager::collapseBridge`
   fait tomber les morceaux du pont chez les autres).
-- Moniteurs cassés et badniks détruits : `GameObjectManager::$objectListener` donne leur numéro dans
-  l'acte, envoyé (`gone`) puis retiré chez tous (`removeObject`, sans donner l'objet). En multijoueur, ils
-  ne reviennent pas quand un joueur réapparaît, comme les anneaux.
+- Objets : `GameObjectManager::$objectListener` donne le numéro de l'objet dans l'acte et ce qui lui
+  arrive, envoyé (`obj`) puis appliqué chez tous (`applyObject`) : `gone` (moniteur cassé, sans donner
+  l'objet ; badnik détruit), `fall` (plateforme qui tombe ou qui monte quand on est dessus), `on` / `off`
+  (interrupteur au sol : les portes de Scrap Brain). En multijoueur, moniteurs et badniks ne reviennent
+  pas quand un joueur réapparaît, comme les anneaux.
+- Plateformes et pièges bougent avec le temps depuis le chargement de l'acte : en ligne, leur temps est
+  arrêté pendant le compte à rebours (`Versus::freezesObjects`), ils partent tous au GO.
 - Les poses tirées de la planche ROM (ressort, toboggan, attente) sont envoyées avec l'image
-  (`Player::getDrawnFrame`, bit 7 de l'état).
+  (`Player::getDrawnFrame`, bit 7 de l'état), dans la couleur du joueur (`tileset-rom-sonic-<couleur>.png`,
+  `tools/soniccolors.py`, `Player::romSheetOf`).
+- Discussion pendant la partie (clavier) : T ou Entrée ouvre une ligne en bas à gauche (Sonic attend),
+  Entrée envoie, Échap annule. Les messages restent 8 s à l'écran (`Versus::drawChat`).
+- **Anti-triche** (l'hôte, `VersusNetwork::$guards`) : il ne croit pas tout ce qu'un joueur annonce.
+  - pas plus vite que 1800 px/s (un saut de place n'est accepté qu'après une mort, un coup de l'hôte, le
+    départ, ou vers un endroit où l'on apparaît) ;
+  - des anneaux seulement s'il les a pris (blocs envoyés, moniteur 10 anneaux, anneaux donnés par
+    l'hôte) ; il ne peut pas en « perdre » plus qu'il n'en avait (mode anneaux) ;
+  - bouclier et invincibilité seulement après avoir cassé ce moniteur.
+
+  Limite : l'hôte est un joueur. Un hôte tricheur n'est contrôlé par personne. Un serveur qui ferait
+  autorité devrait faire tourner `Versus` sans écran.
+- **Compensation de latence** (l'hôte, `VersusNetwork::contactRect`) : un joueur distant est affiché avec
+  120 ms de retard, mais pour les contacts l'hôte le place là où il est sur son propre écran : son
+  dernier état, avancé de sa vitesse pendant l'âge de l'état et le temps du trajet (environ le ping).
 - Chaque joueur garde la couleur de son emplacement sur tous les écrans (`Player::setSheet`).
 - Un joueur part : un bot reprend son Sonic. L'hôte part : la partie s'arrête chez les autres
   (« L HOTE EST PARTI »), avec le classement du moment.
@@ -476,7 +496,8 @@ Composer du jeu, écrite pour ce projet. Le même code PHP marche dans le naviga
 TURN seul (`iceTransportPolicy: 'relay'`, test de php-wasm-network). Testés :
 - le salon, le lancement simultané et un coup porté d'une machine à l'autre ;
 - les anneaux redistribués et les équipes du drapeau ;
-- le départ d'un joueur (un bot le remplace) et celui de l'hôte.
+- le départ d'un joueur (un bot le remplace) et celui de l'hôte ;
+- le salon public, la discussion dans le salon et pendant la partie, les objets détruits (`obj`).
 
 ## Balises de la page
 
