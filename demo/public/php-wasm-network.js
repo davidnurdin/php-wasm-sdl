@@ -66,7 +66,7 @@
 
 		control(message) {
 			if (message.t === 'ping') this.pings.set(message.id, performance.now());
-			if (message.t === 'leave' || message.t === 'create' || message.t === 'join' || message.t === 'quick') {
+			if (message.t === 'leave' || message.t === 'create' || message.t === 'join' || message.t === 'quick' || message.t === 'watch') {
 				this.dropPeers();
 				this.members.clear();
 			}

@@ -34,13 +34,28 @@ la même partie. Il complète :
    - **REJOINDRE** pour taper le code d'un ami.
 3. Au premier passage, le jeu demande un **NOM** (8 caractères), changeable ensuite dans le même menu.
 4. Dans le salon :
-   - l'hôte (le premier arrivé) choisit le **MODE** (course, drapeau, anneaux, deathmatch) et la **ZONE**,
-     puis **LANCER** ;
+   - l'hôte (le premier arrivé) choisit le **MODE** (course, drapeau, anneaux, deathmatch) et la **ZONE**
+     (les actes 1 et 2 des six zones, et les huit niveaux bonus), puis **LANCER** ;
+   - **PARTAGER** donne le lien du salon sur le site (`https://sonic.mimichat.fr/salon/CODE`) : la feuille
+     de partage du téléphone, sinon le lien est copié ;
    - tout le monde peut **PARLER** : une ligne de 30 caractères, sur le clavier à l'écran ou au vrai
      clavier ;
    - les places libres (jusqu'à 6 Sonic) sont prises par des bots.
 5. Pendant la partie, sur ordinateur, **T** ou **Entrée** ouvre une ligne de discussion (Entrée envoie,
    Échap annule). **Échap** seul quitte le salon.
+
+## Depuis le site
+
+Sur https://sonic.mimichat.fr, une fois connecté, l'accueil liste les salons publics. On peut aussi créer
+un salon public ou privé, ou en rejoindre un par son code. La page d'un salon suit le salon comme
+**spectateur** du relais : elle voit les joueurs, la discussion (la même que dans les menus du jeu) et le
+match choisi, et les membres du site présents apparaissent dans le jeu (« SUR LE SITE »). **JOUER** ouvre
+le jeu directement dans le salon (`?room=CODE&back=…`). À la fin du match, ou avec **RETOUR AU SITE**, le
+jeu revient sur la page du salon. Le jeu ne peut pas appeler JavaScript : il écrit ses demandes (partager,
+revenir au site) dans `/tmp/sonic-bridge`, que la page lit (`Bridge.php`, `index.html`).
+
+Le jeu compte aussi des **statistiques** (temps de jeu, sauts, anneaux, matchs gagnés…). Ouvert depuis le
+site par un membre, la page les envoie à son compte (onglet Statistiques du site).
 
 La version desktop se lance avec `./start.sh`, à la racine du jeu. Elle rejoint les mêmes salons que les
 navigateurs.

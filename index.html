@@ -65,14 +65,14 @@
 </head>
 <body>
 <!-- Loader façon Sonic : visible tant que le wasm n'est pas prêt (API : window.SonicLoader, cf. loader.js) -->
-<script src="loader.js?v=5ba3c9c03a01"></script>
+<script src="loader.js?v=8fd80039a427"></script>
 <!-- Mobile / tablette : plein écran, paysage, sans debug (API : window.SonicMobile, cf. mobile.js) -->
-<script src="mobile.js?v=99dac571ef38"></script>
+<script src="mobile.js?v=77432060e0c5"></script>
 <!-- Commandes à l'écran -> vrais événements clavier : tactile (mobile) + pad de debug (API : window.SonicControls, cf. controls.js) -->
 <script src="controls.js?v=5863fea7d347"></script>
 <!-- Multijoueur en ligne : WebSocket / WebRTC pour PHP (API : window.PhpWasmNetwork, github.com/davidnurdin/php-wasm-network).
      Serveur relais : ?net=wss://hote/ws dans l'URL, sinon window.SONIC_NET_URL ci-dessous (VPS : /mimichatPROD/sonicGameServerPhp). -->
-<script src="php-wasm-network.js?v=64d0426a3b6e"></script>
+<script src="php-wasm-network.js?v=c0b61341e0cf"></script>
 <script>window.SONIC_NET_URL = window.SONIC_NET_URL || 'wss://sonic.mimichat.fr/ws';</script>
 <style>
 	/* Le jeu crée sa fenêtre avec SDL_WINDOW_RESIZABLE : le port emscripten de SDL2 prend alors la
@@ -243,7 +243,8 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 
 	async function main() {
 		// 0-40 % : moteur (.wasm)
-		loader.status('Téléchargement du moteur PHP...');
+		const L = (fr, en) => window.SonicSite.lang === 'fr' ? fr : en;
+		loader.status(L('Téléchargement du moteur PHP...', 'Downloading the PHP engine...'));
 		const wasmBinary = await fetchWithProgress(versioned('php-web.wasm'), loader.step(0, 0.4));
 		timing('wasm téléchargé');
 
@@ -259,7 +260,7 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				const m = /\((\d+)\/(\d+)\)/.exec(text);
 				if (m) {
 					dataProgress(Number(m[1]) / Number(m[2]));
-					loader.status(`Chargement du jeu... ${(m[1] / 1048576).toFixed(1)} / ${(m[2] / 1048576).toFixed(1)} Mo`);
+					loader.status(`${L('Chargement du jeu...', 'Loading the game...')} ${(m[1] / 1048576).toFixed(1)} / ${(m[2] / 1048576).toFixed(1)} ${L('Mo', 'MB')}`);
 				} else {
 					loader.status(text);
 				}
@@ -273,7 +274,7 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				log('[stderr]', data);
 			},
 			onAbort(reason) {
-				loader.error('Le wasm a planté : ' + reason);
+				loader.error(L('Le wasm a planté : ', 'The wasm crashed: ') + reason);
 			},
 		});
 		window.FS = FS;
@@ -282,7 +283,7 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 		// Fichiers utilisateur (var/options.json, var/besttimes.json, var/ghosts/*) : /src/src/var est
 		// monté sur IndexedDB (IDBFS). Réimport avant le lancement de PHP, puis sauvegarde périodique
 		// (IDBFS ne réécrit que les fichiers modifiés) et à la fermeture/mise en arrière-plan de la page.
-		loader.progress(0.92, 'Restauration des sauvegardes...');
+		loader.progress(0.92, L('Restauration des sauvegardes...', 'Restoring the saves...'));
 		const SAVE_DIR = '/src/src/var';
 		FS.mkdirTree(SAVE_DIR);
 		FS.mount(FS.filesystems.IDBFS, {}, SAVE_DIR);
@@ -305,7 +306,7 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 
 		// 95 % : démarrage de PHP (synchrone : init SDL, textures, niveaux...). On laisse le navigateur
 		// peindre le loader avant de bloquer le thread.
-		loader.progress(0.95, 'Démarrage du jeu...');
+		loader.progress(0.95, L('Démarrage du jeu...', 'Starting the game...'));
 		await nextFrame();
 		await nextFrame();
 
@@ -322,7 +323,15 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				// Multijoueur en ligne : serveur relais (?net=... ; sinon le serveur de prod, sinon celui de la page)
 				+ `define('SONIC_NET_URL', ${phpString(params.get('net') || window.SONIC_NET_URL)});\n`
 				// le nom du compte du site (sonic.mimichat.fr, bouton JOUER : ?name=...) : le nom en ligne
-				+ `define('SONIC_PLAYER_NAME', ${phpString(params.get('name'))});\n`;
+				+ `define('SONIC_PLAYER_NAME', ${phpString(params.get('name'))});\n`
+				// language: the site's (?lang=), else the browser's
+				+ `define('SONIC_LANG', ${phpString(window.SonicSite.lang)});\n`
+				// a room of the site (JOUER in /salon/CODE): straight into it, its match, back to the site after
+				+ `define('SONIC_ROOM', ${phpString(window.SonicSite.room)});\n`
+				+ `define('SONIC_MODE', ${phpString(params.get('mode'))});\n`
+				+ `define('SONIC_LEVEL', ${Number.parseInt(params.get('level'), 10) || 0});\n`
+				+ `define('SONIC_RETURN', ${window.SonicSite.back ? 'true' : 'false'});\n`
+				+ `define('SONIC_SITE_URL', ${phpString(window.SonicSite.origin)});\n`;
 			ccall("phpw_run", "void", ["string"], [prelude + document.getElementById('php').value]);
 		};
 		try {
@@ -349,7 +358,135 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 		document.getElementById('canvas').focus();
 		window.SonicMobile.start(); // mobile : écran "touche pour jouer" (plein écran + paysage)
 		window.SonicControls.start(); // mobile : couche tactile + bouton DEBUG
+		window.SonicSite.start(FS);
 	}
+
+	// The site (sonic.mimichat.fr): the room to go into, the way back, the game's requests (Bridge.php) and the
+	// statistics sent to the player's account (var/stats.json, what was gained since the last sending).
+	window.SonicSite = (() => {
+		const params = new URLSearchParams(location.search);
+		const SITES = ['https://sonic.mimichat.fr', 'http://127.0.0.1:8000', 'http://localhost:8000', 'http://127.0.0.1:8080'];
+		const store = {
+			get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+			set(k, v) { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} },
+		};
+		let back = null;
+		try {
+			const url = new URL(params.get('back') || '');
+			if (SITES.includes(url.origin)) back = url.href;
+		} catch (e) {}
+		// ?st=: the statistics token of the account (kept here, taken out of the address bar)
+		const st = params.get('st');
+		if (st !== null) {
+			store.set('sonicStatsToken', /^[A-Za-z0-9._-]{10,300}$/.test(st) ? st : null);
+			// where to send them: the site that opened the game (?site=, or the room to go back to)
+			const site = SITES.includes(params.get('site')) ? params.get('site') : (back ? new URL(back).origin : SITES[0]);
+			store.set('sonicStatsSite', site);
+			params.delete('st');
+			const query = String(params);
+			history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+		}
+		const room = (params.get('room') || '').toUpperCase();
+		const navLang = (navigator.language || '').toLowerCase().startsWith('fr') ? 'fr' : 'en';
+		const STATS_FILE = '/src/src/var/stats.json';
+		const BRIDGE_FILE = '/tmp/sonic-bridge';
+		let fs = null;
+
+		const toast = (text) => {
+			const el = document.createElement('div');
+			el.textContent = text;
+			el.style.cssText = 'position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:99;padding:8px 14px;'
+				+ 'background:#1d3fb8;color:#fff;font:bold 14px sans-serif;border-radius:6px;box-shadow:0 2px 8px #0008';
+			document.body.appendChild(el);
+			setTimeout(() => el.remove(), 2500);
+		};
+
+		const share = async (req) => {
+			const url = String(req.url || '');
+			if (!/^https?:\/\//.test(url)) return;
+			const text = String(req.text || '');
+			if (navigator.share) {
+				try { await navigator.share({ title: 'Sonic PHP', text, url }); return; }
+				catch (e) { if (e && e.name === 'AbortError') return; }
+			}
+			try {
+				await navigator.clipboard.writeText(url);
+				toast((navLang === 'fr' ? 'Lien copié : ' : 'Link copied: ') + url);
+			} catch (e) {
+				toast(url);
+			}
+		};
+
+		// statistics: what the file has more than what was sent last time
+		const readStats = () => {
+			try { return JSON.parse(fs.readFile(STATS_FILE, { encoding: 'utf8' })); } catch (e) { return null; }
+		};
+		const sendStats = (leaving) => {
+			const now = fs && readStats();
+			if (!now) return;
+			const token = store.get('sonicStatsToken');
+			let sent = {};
+			try { sent = JSON.parse(store.get('sonicStatsSent') || '{}') || {}; } catch (e) {}
+			if (!token) {
+				store.set('sonicStatsSent', JSON.stringify(now));   // no account: nothing to send, now or later
+				return;
+			}
+			const delta = {};
+			for (const [k, v] of Object.entries(now)) {
+				const d = Math.round(((Number(v) || 0) - (Number(sent[k]) || 0)) * 10) / 10;
+				if (d > 0) delta[k] = d;
+			}
+			if (!Object.keys(delta).length) return;
+			const body = JSON.stringify({ st: token, d: delta });
+			const url = (store.get('sonicStatsSite') || SITES[0]) + '/api/stats';
+			// text/plain: no CORS preflight; sendBeacon when the page goes away
+			if (leaving && navigator.sendBeacon && navigator.sendBeacon(url, new Blob([body], { type: 'text/plain' }))) {
+				store.set('sonicStatsSent', JSON.stringify(now));
+				return;
+			}
+			fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'text/plain' }, keepalive: true })
+				.then((r) => {
+					if (r.ok) store.set('sonicStatsSent', JSON.stringify(now));
+					else if (r.status === 401 || r.status === 403) store.set('sonicStatsToken', null);   // account gone
+				})
+				.catch(() => {});
+		};
+
+		const goBack = () => {
+			sendStats(true);
+			Promise.resolve(window.saveUserFiles && window.saveUserFiles()).finally(() => { location.href = back || SITES[0]; });
+		};
+
+		// the game's requests: one JSON line each (Bridge.php)
+		const poll = () => {
+			let text = '';
+			try {
+				if (!fs.analyzePath(BRIDGE_FILE).exists) return;
+				text = fs.readFile(BRIDGE_FILE, { encoding: 'utf8' });
+				fs.unlink(BRIDGE_FILE);
+			} catch (e) { return; }
+			for (const line of text.split('\n')) {
+				let req;
+				try { req = JSON.parse(line); } catch (e) { continue; }
+				if (req.t === 'share') share(req);
+				else if (req.t === 'back') goBack();
+			}
+		};
+
+		return {
+			lang: ['fr', 'en'].includes(params.get('lang')) ? params.get('lang') : navLang,
+			room: /^[A-Z]{4}$/.test(room) ? room : '',
+			back,
+			origin: back ? new URL(back).origin : '',
+			start(FS) {
+				fs = FS;
+				setInterval(poll, 250);
+				setInterval(() => sendStats(false), 60000);
+				addEventListener('pagehide', () => sendStats(true));
+				document.addEventListener('visibilitychange', () => document.hidden && sendStats(true));
+			},
+		};
+	})();
 
 	main().catch((e) => {
 		console.error(e);

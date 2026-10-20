@@ -139,7 +139,7 @@
 		<div class="sl-hud">
 			<div class="sl-rings">RINGS <b class="sl-pct">0</b></div>
 			<div class="sl-bar"><div class="sl-fill"></div><div class="sl-cover"></div></div>
-			<div class="sl-status">Initialisation...</div>
+			<div class="sl-status">...</div>
 		</div>
 		<div class="sl-source">Open source project : <a href="https://github.com/davidnurdin/php-wasm-sdl/" target="_blank" rel="noopener">https://github.com/davidnurdin/php-wasm-sdl/</a></div>
 		<div class="sl-ground"></div>`;

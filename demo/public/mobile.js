@@ -80,14 +80,17 @@ html.is-mobile #canvas {
 		document.body ? mount() : document.addEventListener('DOMContentLoaded', mount);
 		return el;
 	};
+	// the page's language: ?lang= (the site), else the browser's
+	const lang = new URLSearchParams(location.search).get('lang');
+	const fr = lang ? lang === 'fr' : (navigator.language || '').toLowerCase().startsWith('fr');
 	const tapScreen = makeScreen(`
 		<div class="sm-ring"></div>
-		<div class="sm-big sm-blink">TOUCHE POUR JOUER</div>
-		<div class="sm-small">PLEIN ECRAN - PAYSAGE</div>`);
+		<div class="sm-big sm-blink">${fr ? 'TOUCHE POUR JOUER' : 'TAP TO PLAY'}</div>
+		<div class="sm-small">${fr ? 'PLEIN ECRAN - PAYSAGE' : 'FULL SCREEN - LANDSCAPE'}</div>`);
 	const rotateScreen = makeScreen(`
 		<div class="sm-phone"></div>
-		<div class="sm-big">TOURNE TON APPAREIL</div>
-		<div class="sm-small">LE JEU SE JOUE EN PAYSAGE</div>`);
+		<div class="sm-big">${fr ? 'TOURNE TON APPAREIL' : 'TURN YOUR DEVICE'}</div>
+		<div class="sm-small">${fr ? 'LE JEU SE JOUE EN PAYSAGE' : 'THE GAME IS PLAYED IN LANDSCAPE'}</div>`);
 
 	const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
 	const fsSupported = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
