@@ -68,6 +68,13 @@ RUN git clone https://github.com/kea/php-sdl-ttf.git && \
     mkdir -p /src/php-src/ext/sdl_ttf && \
 	cp -r php-sdl-ttf/* /src/php-src/ext/sdl_ttf
 
+# php-wasm-network : extension wasmnet (pont PHP <-> WebSocket / WebRTC du navigateur) + sa bibliothèque JS
+# emscripten (--js-library à l'édition de liens). NETWORK_REF : commit à prendre (change -> recompile).
+ARG NETWORK_REF=93ba3ec9643a9621b9f75443ba5ceaaf9a484783
+RUN git clone https://github.com/davidnurdin/php-wasm-network.git /src/php-wasm-network && \
+	cd /src/php-wasm-network && git checkout $NETWORK_REF && \
+	cp -r /src/php-wasm-network/ext/wasmnet /src/php-src/ext/wasmnet
+
 #RUN #git clone https://github.com/seanmorris/vrzno && \
 #	mkdir -p /src/php-src/ext/vrzno && \
 #	cp -r vrzno/* /src/php-src/ext/vrzno
@@ -159,6 +166,7 @@ RUN --mount=type=cache,target=/emsdk/upstream/emscripten/cache cd /src/php-src &
     	--enable-sdl 	   \
     	--with-sdl_image \
     	--enable-sdl_ttf \
+    	--enable-wasmnet \
     	--with-sdl_mixer \
 #		--with-libxml      \
     	--enable-gd \
@@ -237,6 +245,7 @@ RUN --mount=type=cache,target=/emsdk/upstream/emscripten/cache mkdir /build && c
 	-s EXPORT_NAME=$EXPORT_NAME \
 	# -s DECLARE_ASM_MODULE_EXPORTS=0 \
 	-lidbfs.js                       \
+	--js-library /src/php-wasm-network/js/library_wasmnet.js \
 		/src/phpw.o .libs/libphp.a /src/usr/lib/libxml2.a
     #/src/usr/lib/sqlite3.o
 RUN rm -r /src/*

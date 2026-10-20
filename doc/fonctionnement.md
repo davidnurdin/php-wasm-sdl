@@ -320,7 +320,7 @@ entièrement : on glisse vers le bas.
 
 Contre des Sonic pilotés par l'ordinateur, sur un acte au choix (actes 1 et 2 de chaque zone). L'acte
 est chargé **sans badniks ni panneau de fin** (`GameObjectManager::$noEnemies`) ; les pièges (piques,
-canons...) restent. Le jeu en réseau est à faire : voir [`TODO-multijoueur-reseau.md`](../TODO-multijoueur-reseau.md).
+canons...) restent. On peut aussi jouer **en ligne** contre d'autres joueurs : voir la section suivante.
 
 | Mode | Sonic | Règles |
 |---|---|---|
@@ -386,6 +386,66 @@ règles du jeu, avec des vies infinies.
 
 Côté navigateur, rien de spécial : les commandes tactiles et clavier pilotent le Sonic du joueur, et le
 bouton de saut (tap) ferme l'écran des résultats.
+
+## Multijoueur en ligne (MULTIJOUEUR > EN LIGNE)
+
+Le réseau passe par [php-wasm-network](https://github.com/davidnurdin/php-wasm-network), une dépendance
+Composer du jeu, écrite pour ce projet. Le même code PHP marche dans le navigateur et en natif :
+
+- **Dans le navigateur** :
+  - le moteur contient l'extension C `wasmnet` (Dockerfile : `--enable-wasmnet`, et
+    `--js-library library_wasmnet.js` à l'édition de liens, commit épinglé par `NETWORK_REF`) ;
+  - elle appelle `window.PhpWasmNetwork` (`php-wasm-network.js`, chargé par la page avant le moteur et
+    copié du `vendor/` par `package.sh`), qui tient le WebSocket et les connexions WebRTC.
+  - Rien ne bloque : PHP lit les événements à chaque frame (`Connection::poll()`).
+- **En natif** : un client WebSocket en PHP pur, qui passe toujours par le relais (pas de WebRTC en PHP).
+- **Serveur** : `server/bin/server.php` de php-wasm-network (salons à 4 lettres, relais, signalisation
+  WebRTC), à mettre derrière un proxy TLS (`wss://`), avec coturn pour TURN (`server/docker-compose.yml`).
+  L'adresse est donnée par `?net=wss://hote/ws` dans l'URL de la page, sinon par `window.SONIC_NET_URL`
+  (index.html), puis passée au jeu par la constante `SONIC_NET_URL`. En natif, c'est la variable
+  d'environnement `SONIC_NET_URL`. Par défaut : `ws://localhost:8090/ws`.
+
+**Menu** :
+- EN LIGNE → CREER UN SALON : le code s'affiche ;
+- REJOINDRE : le code se tape au clavier à l'écran (Échap annule) ;
+- RESEAU WEBRTC / WEBSOCKET : le choix est mémorisé dans `versusNet` ;
+- dans le salon, la liste des joueurs avec leur ping, et « P2P » quand la liaison WebRTC directe est
+  ouverte ;
+- l'hôte (celui qui a créé le salon) lance la partie avec les réglages de sa page MULTIJOUEUR (mode,
+  zone, IA, nombre de Sonic) ;
+- jusqu'à 6 joueurs ; les places restantes sont prises par des bots. En drapeau, les joueurs sont
+  répartis entre les deux équipes.
+
+**Qui décide** (`src/Multiplayer/Online.php`, `VersusNetwork.php`, trait de `Versus`) :
+
+- **Chaque joueur simule son propre Sonic** sur sa machine : aucun retard pour lui. Il envoie son état
+  30 fois par seconde à l'hôte (`STATE` : position, vitesse, image d'animation, attaque, anneaux, bouclier,
+  mort), en message non fiable.
+- **L'hôte fait autorité** : son `Versus` fait tourner les bots et toutes les règles (contacts, anneaux
+  redistribués, drapeau, ligne d'arrivée, scores, chrono). Les autres joueurs sont chez lui des
+  « marionnettes » (`Rival::$puppet`) placées par leur état. Il diffuse l'état complet 20 fois par seconde
+  (`SNAPSHOT`, environ 30 octets par Sonic).
+- Les événements fiables (`EVENT`, JSON) vont de l'hôte au joueur concerné :
+  - `place` : sa place de départ ;
+  - `hurt` : touché par un Sonic, le joueur applique alors chez lui les mêmes règles qu'un coup local ;
+  - `bounce`, `gain` (anneaux gagnés), `banner`, `sfx`, et `over` (fin, avec les scores).
+
+  Dans l'autre sens, le joueur envoie `lost` (anneaux perdus, que l'hôte répartit) et `died`.
+- Les autres Sonic sont affichés **avec 120 ms de retard**, entre deux positions reçues (interpolation),
+  ce qui donne un mouvement fluide malgré les 20 envois par seconde.
+- Anneaux ramassés : `Level::$tileListener` signale chaque bloc d'anneaux modifié ; le joueur l'envoie à
+  l'hôte, qui l'applique et le transmet à tous.
+- Chaque joueur garde la couleur de son emplacement sur tous les écrans (`Player::setSheet`).
+- Un joueur part : un bot reprend son Sonic. L'hôte part : la partie s'arrête chez les autres
+  (« L HOTE EST PARTI »), avec le classement du moment.
+- Pas de *lockstep* : la physique utilise des `float` et des pas de temps variables, elle n'est pas
+  déterministe entre machines (et encore moins entre wasm 32 bits et PHP natif 64 bits).
+
+**Tests** : deux fenêtres Chromium (une par joueur, car un onglet en arrière-plan n'a plus de
+`requestAnimationFrame`) et le serveur local, en WEBRTC comme en WEBSOCKET. Testés :
+- le salon, le lancement simultané et un coup porté d'une machine à l'autre ;
+- les anneaux redistribués et les équipes du drapeau ;
+- le départ d'un joueur (un bot le remplace) et celui de l'hôte.
 
 ## Balises de la page
 

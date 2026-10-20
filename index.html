@@ -6,7 +6,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 	<!-- taille réelle de php-web.wasm, écrite par package.sh (Content-Length ne convient pas si le
 	     serveur compresse en gzip, comme GitHub Pages) -->
-	<meta name="php-wasm-size" content="7591425" />
+	<meta name="php-wasm-size" content="7593575" />
 
 	<title>Sonic en PHP : jouable dans le navigateur (PHP + SDL en WebAssembly)</title>
 	<meta name="description" content="Sonic the Hedgehog (Master System) réécrit en PHP pur et compilé en WebAssembly avec SDL2 : jouable dans le navigateur sur ordinateur, mobile et tablette (Android, iPhone, iPad). Projet open source." />
@@ -70,6 +70,10 @@
 <script src="mobile.js?v=99dac571ef38"></script>
 <!-- Commandes à l'écran -> vrais événements clavier : tactile (mobile) + pad de debug (API : window.SonicControls, cf. controls.js) -->
 <script src="controls.js?v=5863fea7d347"></script>
+<!-- Multijoueur en ligne : WebSocket / WebRTC pour PHP (API : window.PhpWasmNetwork, github.com/davidnurdin/php-wasm-network).
+     Serveur relais : ?net=wss://hote/ws dans l'URL, sinon window.SONIC_NET_URL ci-dessous. -->
+<script src="php-wasm-network.js?v=3ae200342578"></script>
+<script>window.SONIC_NET_URL = window.SONIC_NET_URL || '';</script>
 <style>
 	/* Le jeu crée sa fenêtre avec SDL_WINDOW_RESIZABLE : le port emscripten de SDL2 prend alors la
 	   taille CSS du canvas comme taille de fenêtre (pas de zoom CSS, sinon SDL lit une taille faussée
@@ -311,7 +315,9 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 			const prelude = `define('SONIC_MOBILE', ${window.SonicMobile.isMobile ? 'true' : 'false'});\n`
 				+ `define('SONIC_FRAME_INTERVAL', 0.01);\n`
 				// app.php : container Symfony précompilé par package.sh (tools/dump-container.php)
-				+ `define('SONIC_CONTAINER_CACHE', true);\n`;
+				+ `define('SONIC_CONTAINER_CACHE', true);\n`
+				// Multijoueur en ligne : serveur relais (?net=... ; sinon le serveur de prod, sinon celui de la page)
+				+ `define('SONIC_NET_URL', ${JSON.stringify(new URLSearchParams(location.search).get('net') || window.SONIC_NET_URL || '')});\n`;
 			ccall("phpw_run", "void", ["string"], [prelude + document.getElementById('php').value]);
 		};
 		try {

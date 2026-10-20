@@ -59,6 +59,11 @@ mkdir -p "$OUT/assets"
 FONT="$ROOT/demo/src/src/assets/fonts/NiseSegaSonic.TTF"
 [ -f "$FONT" ] && cp "$FONT" "$OUT/assets/" || echo "    (police $FONT absente : le loader utilisera une police système)"
 
+# réseau du multijoueur en ligne : le côté navigateur de php-wasm-network (dépendance Composer du jeu),
+# chargé par la page avant le moteur (l'extension wasmnet du moteur l'appelle)
+NETJS="$ROOT/demo/src/src/vendor/davidnurdin/php-wasm-network/js/php-wasm-network.js"
+[ -f "$NETJS" ] && cp "$NETJS" "$OUT/php-wasm-network.js" || echo "    (php-wasm-network.js absent : pas de multijoueur en ligne)"
+
 # versions : empreinte de chaque fichier, lue par index.html (version.json, toujours relu sans cache) ;
 # les scripts de la page sont appelés avec ?v=<empreinte> : un changement est pris tout de suite
 hash() { sha256sum "$1" | cut -c1-12; }
@@ -70,7 +75,7 @@ cat > "$OUT/version.json" <<JSON
   "php-web.data": "$(hash "$OUT/php-web.data")"
 }
 JSON
-for js in loader.js mobile.js controls.js; do
+for js in loader.js mobile.js controls.js php-wasm-network.js; do
   sed -i -E "s|src=\"$js(\?v=[0-9a-f]+)?\"|src=\"$js?v=$(hash "$OUT/$js")\"|" "$OUT/index.html"
 done
 cat "$OUT/version.json"
@@ -80,7 +85,7 @@ ls -la "$OUT"/php-web.*
 if [ "${1:-}" = "--deploy" ]; then
   echo "==> copie vers la racine du repo (GitHub Pages)"
   cp "$OUT/php-web.mjs" "$OUT/php-web.wasm" "$OUT/php-web.data" "$OUT/php-web.data.js" \
-     "$OUT/index.html" "$OUT/loader.js" "$OUT/mobile.js" "$OUT/controls.js" "$OUT/manifest.webmanifest" \
+     "$OUT/index.html" "$OUT/loader.js" "$OUT/mobile.js" "$OUT/controls.js" "$OUT/php-wasm-network.js" "$OUT/manifest.webmanifest" \
      "$OUT/version.json" "$ROOT/"
   mkdir -p "$ROOT/assets" && cp -r "$OUT/assets/." "$ROOT/assets/"
 fi
