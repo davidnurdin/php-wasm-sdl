@@ -2,6 +2,11 @@
 
 [DEMO] ( working yet on android ! ) => https://davidnurdin.github.io/php-wasm-sdl/
 
+Documentation (français) :
+- [Fonctionnement du moteur et du jeu](doc/fonctionnement.md)
+- [Le multijoueur en ligne, expliqué](doc/multijoueur-en-ligne.md)
+- [Le réseau : php-wasm-network (WebSocket, WebRTC, serveur, API PHP)](https://github.com/davidnurdin/php-wasm-network/blob/main/doc/guide.md)
+
 # WASM PHP
 https://github.com/soyuka/php-wasm
 

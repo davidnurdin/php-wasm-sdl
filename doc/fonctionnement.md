@@ -402,8 +402,10 @@ Composer du jeu, écrite pour ce projet. Le même code PHP marche dans le naviga
 - **Serveur** : `server/bin/server.php` de php-wasm-network (salons à 4 lettres, relais, signalisation
   WebRTC), à mettre derrière un proxy TLS (`wss://`), avec coturn pour TURN (`server/docker-compose.yml`).
   L'adresse est donnée par `?net=wss://hote/ws` dans l'URL de la page, sinon par `window.SONIC_NET_URL`
-  (index.html), puis passée au jeu par la constante `SONIC_NET_URL`. En natif, c'est la variable
-  d'environnement `SONIC_NET_URL`. Par défaut : `ws://localhost:8090/ws`.
+  (index.html), puis passée au jeu par la constante `SONIC_NET_URL`. En natif (`./start.sh`), c'est la
+  variable d'environnement `SONIC_NET_URL`. Par défaut, des deux côtés : `wss://sonic.mimichat.fr/ws`
+  (`Online::DEFAULT_URL`). Un joueur desktop et un joueur navigateur jouent ensemble : le desktop passe
+  toujours par le relais (pas de WebRTC en PHP natif), les navigateurs y renoncent pour lui au bout de 10 s.
 - **Serveur en ligne** : `wss://sonic.mimichat.fr/ws` (valeur par défaut de `window.SONIC_NET_URL` dans
   index.html ; `ssh.mimichat.fr`, l'ancien nom, marche encore pour les pages en cache), sur le VPS dans
   `/mimichatPROD/sonicGameServerPhp` (`docker compose`, copie dans php-wasm-network `server/deploy-traefik`) :
@@ -433,8 +435,8 @@ Composer du jeu, écrite pour ce projet. Le même code PHP marche dans le naviga
   dans le salon, avec les arrivées et les départs (`Online::CHAT`, `Online::$chat`) ;
 - `Online::VERSION` est dans le meta des salons : un joueur avec une autre version (vieille page en
   cache) ne peut pas entrer (« AUTRE VERSION  RECHARGE LA PAGE ») ;
-- l'hôte (celui qui a créé le salon) lance la partie avec les réglages de sa page MULTIJOUEUR (mode,
-  zone, IA, nombre de Sonic) ;
+- l'hôte (celui qui a créé le salon) choisit le MODE et la ZONE dans le salon même (les autres les voient
+  changer), puis lance la partie. L'IA et le nombre de Sonic viennent de sa page MULTIJOUEUR ;
 - jusqu'à 6 joueurs ; les places restantes sont prises par des bots. En drapeau, les joueurs sont
   répartis entre les deux équipes, et le côté de chaque base (gauche ou droite) est tiré au sort par
   l'hôte (`swap` du START ; hors ligne aussi, à chaque partie).
