@@ -144,10 +144,14 @@ serveur de jeu qui fasse l'arbitre, c'est-à-dire faire tourner `Versus` sans é
 
 - Adresse : `wss://sonic.mimichat.fr/ws` (l'ancien nom `ssh.mimichat.fr` marche encore). État :
   https://sonic.mimichat.fr/health.
-- Trois conteneurs Docker : le relais PHP, Caddy (certificat HTTPS) et coturn (TURN, pour WebRTC à travers
-  les box strictes). Traefik, déjà présent sur la machine pour les autres sites, leur passe ce nom de
-  domaine.
-- Mise à jour : `cd /mimichatPROD/sonicGameServerPhp && ./update.sh`.
+- Conteneurs Docker : le relais PHP, Caddy (certificat HTTPS), coturn (TURN, pour WebRTC à travers les box
+  strictes), et le site https://sonic.mimichat.fr avec sa base MariaDB
+  ([sonicGameSite](https://github.com/davidnurdin/sonicGameSite)). Traefik, déjà présent sur la machine pour
+  les autres sites, leur passe ce nom de domaine.
+- Le TURN est annoncé sous `ssh.mimichat.fr` (`TURN_HOST`), un nom qui mène directement à la machine : le
+  proxy Cloudflare devant `sonic.mimichat.fr` ne passe que le web.
+- Mise à jour : `cd /mimichatPROD/sonicGameServerPhp && ./update.sh` (le relais), `./update-site.sh` (le
+  site).
 - Le secret TURN est dans `.env` (lisible par root seulement) et ne doit jamais aller sur GitHub.
 
 ## Développer et tester en local
