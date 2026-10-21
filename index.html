@@ -521,6 +521,17 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 					sprites.push(sheet);
 				}
 				data.sprites = sprites;
+				// its own music and sound effects (LevelManager::loadCustom): music.wav, sfx-<index>.wav
+				data.custom_music = typeof data.music_wav === 'string';
+				if (data.custom_music) FS.writeFile('/src/src/var/custom/music.wav', bytes(data.music_wav));
+				data.custom_sfx = [];
+				for (const [index, wav] of Object.entries(data.sfx_wav || {})) {
+					if (!/^\d{1,3}$/.test(index) || typeof wav !== 'string') continue;
+					FS.writeFile(`/src/src/var/custom/sfx-${Number(index)}.wav`, bytes(wav));
+					data.custom_sfx.push(Number(index));
+				}
+				delete data.music_wav;
+				delete data.sfx_wav;
 				FS.writeFile(LEVEL_FILE, JSON.stringify(data));
 				return true;
 			} catch (e) {
