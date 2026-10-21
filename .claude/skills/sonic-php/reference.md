@@ -12,7 +12,7 @@ la partie concernée :
 | `php-wasm-network/doc/guide.md` | le réseau complet : WebSocket, WebRTC, STUN / TURN, API PHP, serveur, protocole, déploiement |
 | `php-wasm-network/server/deploy-traefik/README.md` | le déploiement de prod |
 | `sonicGameSite/README.md` | le site : dev, variables, prod, sauvegarde de la base |
-| `sonicGameSite/TODO-editeur-de-niveau.md` | les 7 étapes de l'éditeur de niveau (pas commencé), le format des niveaux du jeu |
+| `sonicGameSite/TODO-editeur-de-niveau.md` | les étapes de l'éditeur de niveau (le plan de départ ; l'éditeur, les tiles, les sprites et les sons sont faits), le format des niveaux du jeu |
 
 ## 1. Le jeu : `/home/david/poc/sonicGamePhp`
 
@@ -63,6 +63,16 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
   `Bridge::send(['t' => 'replay', 'file' => ...])` ; la page l'envoie au site. `Scene/ReplayPlayer.php` le
   rejoue quand `SONIC_REPLAY` (chemin du fichier) est défini. Un match en ligne a un id commun
   (`startConfig['id']`, `Versus::matchId()`).
+- Niveaux du site (niveau `LevelManager::CUSTOM` = 36) : `SONIC_CUSTOM_LEVEL` (chemin d'un `level.json`,
+  `tiles.png` à côté) les fait jouer au démarrage (bouton Jouer / Tester du site). Le menu NIVEAUX DU SITE
+  (`Utils/SiteLevels.php`) liste et télécharge les niveaux en direct : en wasm par le pont (`{"t":"levels"}`,
+  `{"t":"level"}`, réponses dans `/tmp/sonic-levels.json` et `/tmp/sonic-level.json`, avec le compte du
+  joueur), en natif par HTTP vers `SONIC_SITE_URL` (publics seulement). Un niveau peut avoir ses masques de
+  collision (`masks`, `Level::applyMask`) et ses sprites (`sprites` : `sprite-<planche>.png` à côté ;
+  `LevelManager::useCurrentSprites` les met à la place des planches du jeu pendant le niveau, puis remet
+  celles du jeu). Les poses d'attente / ressort de Sonic sont sur la planche `rom`, pas `sonic`.
+- Mode `SONIC_OBJECT_ICONS` (chemin d'un JSON) : dessine chaque objet du niveau dans une case sur magenta,
+  pour `sonicGameSite/tools/object-icons.py` (les images des objets de l'éditeur de niveau).
 - Test natif d'un replay : `var/` appartient à root sur le PC (start.sh passe par sudo) ; pour un script de
   test lancé sans sudo, créer d'abord `var/replays` à soi (`sudo -n mkdir -p var/replays && sudo -n chown
   david: var/replays`), sinon rien n'est écrit (sans erreur).
@@ -140,8 +150,15 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
   - éditeurs (`EditorController`, détail dans le README du site) : `/editeur`, `/niveau/{id}` (+ `/editer`,
     `.json`, `.png`), `/tiles/{id}` (+ `/editer`, `.json`, `.png`). Niveaux et tiles au format du jeu (blocs
     de 32 px, un octet de collision par bloc, 47 formes) ; les zones du jeu viennent de `data/game/`
-    (`tools/game-data.py <jeu>`, puis `app:zones` au démarrage du conteneur). Pas encore jouables dans le jeu.
-    Après un test : `delete from user` efface aussi niveaux et tiles des comptes (pas les zones) ;
+    (`tools/game-data.py <jeu>`, puis `app:zones` au démarrage du conteneur). Jouables dans le jeu :
+    `/niveau/{id}/jouer`, `/niveau/{id}/jeu.json?lt=` (clé `LevelToken` d'un niveau privé, CORS `*`) et
+    `POST /api/niveaux` (`{st, page}` en `text/plain` : la liste du menu NIVEAUX DU SITE) ;
+  - sprites (`SpriteController`) : `/sprites/{id}` (+ `/editer`, `.json`, `/{planche}.png`), planches de
+    `SpriteSet::SHEETS`, PNG de la taille de celle du jeu (vérifiée par l'en-tête, il n'y a pas GD) ;
+    planches de départ `public/img/sheets/` (`tools/sprite-sheets.py <jeu>`) ;
+  - sons (`SoundController`) : `/son/{id}` (+ `/editer`), musiques et bruitages (`SoundData`), joués par
+    `public/js/sound-engine.js` ; pas dans le jeu.
+    Après un test : `delete from user` efface aussi niveaux, tiles, sprites et sons des comptes (pas les zones) ;
   - `/langue/{fr|en}?back=/chemin` : cookie `lang` (sinon `Accept-Language`, `LocaleSubscriber`) ;
   - `/inscription`, `/connexion`, `/deconnexion`, `/editeur`, `/presence`.
 - `PlayerStats` (table `player_stats`, clé = l'utilisateur, `ON DELETE CASCADE`) : `totals` en JSON, les

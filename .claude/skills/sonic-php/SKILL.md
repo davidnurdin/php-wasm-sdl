@@ -178,6 +178,14 @@ Services `docker compose` : `relay`, `caddy`, `coturn`, `site`, `db`. Détail da
 - Valeurs d'URL passées au PHP wasm : toujours en base64 (`phpString()` dans `index.html`), jamais
   interpolées telles quelles (risque d'injection de code par `?net=` ou `?name=`).
 - `demo/src/src` : ne jamais y faire de vrais commits. C'est une copie : on commite dans le jeu.
+- **PHP du navigateur** : les entiers font 32 bits (`hexdec('ffffffff')` y est un flottant) et il n'y a pas
+  d'iconv. Ce qui marche en natif peut casser en wasm : tester aussi dans la page.
+- **Tester la page wasm sans l'extension Chrome** : un Chromium normal dans le Xvfb `:77` (pas headless : en
+  headless, captures et `Runtime.evaluate` restent bloqués), avec `--use-gl=angle --use-angle=swiftshader
+  --enable-unsafe-swiftshader` (sans WebGL, le jeu meurt sur sa première texture), piloté par le port de
+  débogage (CDP, `websockets` en Python), captures avec `import -window root`. Les éditeurs ont un
+  `beforeunload` : changer de page avec des modifications non enregistrées bloque l'onglet sur « Quitter le
+  site ? ». Ouvrir un nouvel onglet, ou tuer ce Chromium de test.
 - Symfony 8 met le CSRF en mode « stateless » par défaut. Le site le force en sessions
   (`config/packages/csrf.yaml`) pour que les formulaires marchent aussi sans JS et avec curl.
 - Les touches simulées (extension Chrome, CDP, `KeyboardEvent` en JS) n'arrivent **pas** au jeu wasm : on ne
