@@ -14,7 +14,8 @@
  *   - les événements tactiles n'atteignent plus le canvas : InputTouchpad (PHP) ne sert plus ici.
  *
  * Pad de debug (ordinateur et mobile) : caméra libre 8 4 6 2, 5 = Sonic suit la caméra,
- * F3 / F4 = niveau précédent / suivant, F6 = infos + FPS. Les boutons restent "enfoncés" tant qu'on
+ * F3 / F4 = niveau précédent / suivant, F6 = infos + FPS, F7 = AUTOPLAY (l'ordinateur joue à ta place : seul,
+ * contre l'ordinateur ou en ligne ; le niveau ne compte plus pour les records). Les boutons restent "enfoncés" tant qu'on
  * appuie (la caméra avance en continu). Sur mobile il s'ouvre avec le bouton DEBUG en haut au centre.
  * Sur ordinateur, la barre contient aussi le bouton PLEIN ECRAN (ou double-clic sur le jeu).
  *
@@ -41,6 +42,7 @@
 		f3: [114, 'F3', 'F3', 0],
 		f4: [115, 'F4', 'F4', 0],
 		f6: [117, 'F6', 'F6', 0],
+		f7: [118, 'F7', 'F7', 0],
 		esc: [27, 'Escape', 'Escape', 0],
 	};
 	const holders = {}; // nom -> nombre de sources qui maintiennent la touche (doigts, boutons)
@@ -164,6 +166,7 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 			<button data-key="f3" title="Niveau précédent (F3)">F3 ◀ NIVEAU</button>
 			<button data-key="f4" title="Niveau suivant (F4)">F4 NIVEAU ▶</button>
 			<button data-key="f6" title="Coordonnées + FPS (F6)">F6 INFOS/FPS</button>
+			<button data-key="f7" title="L'ordinateur joue à ta place, appuyer encore pour reprendre la main (F7)">F7 AUTOPLAY</button>
 		</div>`;
 	debugPad.addEventListener('pointerdown', (e) => {
 		const btn = e.target.closest('button[data-key]');

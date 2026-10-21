@@ -294,7 +294,9 @@ la page précédente. Mobile : en haut au centre, à gauche de DEBUG ; ordinateu
 
 **Pad de debug** (ordinateur : sous le canvas ; mobile : bouton **DEBUG** en haut au centre) : boutons
 8 4 6 2 (caméra libre, maintenus = déplacement continu), 5 (Sonic suit la caméra), F3 / F4 (niveau
-précédent / suivant), F6 (panneau coordonnées + **FPS**). Utile aussi sur un portable sans pavé
+précédent / suivant), F6 (panneau coordonnées + **FPS**), F7 (**AUTOPLAY** : l'ordinateur joue à ta place,
+seul, contre l'ordinateur ou en ligne ; un cerveau de bot du jeu (`BotBrain`) avec un chemin calculé dans la
+carte (`BotRoute`) ; le niveau ne compte plus pour les records, les fantômes ni les replays). Utile aussi sur un portable sans pavé
 numérique. Depuis la console : `SonicControls.key('f6', true)` puis `SonicControls.key('f6', false)`.
 
 **Plein écran sur ordinateur** : bouton **PLEIN ECRAN** de la barre sous le jeu, ou double-clic sur
