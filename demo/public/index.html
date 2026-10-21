@@ -535,6 +535,26 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				}
 				delete data.music_wav;
 				delete data.sfx_wav;
+				// the other pictures of its tiles (colour cycling, under water...): tiles<variant>.png, and their names
+				const variants = [];
+				for (const [variant, png] of Object.entries(data.tile_variants || {})) {
+					if (!/^-[a-z0-9-]{1,20}$/.test(variant) || typeof png !== 'string') continue;
+					FS.writeFile(`/src/src/var/custom/tiles${variant}.png`, bytes(png));
+					variants.push(variant);
+				}
+				data.tile_variants = variants;
+				// the replay of its record: its ghost (record.json.gz), if it can be read
+				data.record_ghost = false;
+				const replay = data.records && data.records[0] && data.records[0].replay;
+				if (Number.isInteger(replay)) {
+					try {
+						const r = await fetch(`${site}/api/replay/${replay}`);
+						if (r.ok) {
+							FS.writeFile('/src/src/var/custom/record.json.gz', new Uint8Array(await r.arrayBuffer()));
+							data.record_ghost = true;
+						}
+					} catch (e) {}
+				}
 				FS.writeFile(LEVEL_FILE, JSON.stringify(data));
 				return true;
 			} catch (e) {

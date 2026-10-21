@@ -12,7 +12,7 @@ la partie concernée :
 | `php-wasm-network/doc/guide.md` | le réseau complet : WebSocket, WebRTC, STUN / TURN, API PHP, serveur, protocole, déploiement |
 | `php-wasm-network/server/deploy-traefik/README.md` | le déploiement de prod |
 | `sonicGameSite/README.md` | le site : dev, variables, prod, sauvegarde de la base |
-| `sonicGameSite/TODO-editeur-de-niveau.md` | les étapes de l'éditeur de niveau (le plan de départ ; l'éditeur, les tiles, les sprites et les sons sont faits), le format des niveaux du jeu |
+| `sonicGameSite/TODO.md` | ce qui reste à faire, du plus urgent au moins urgent (sécurité, comptes, modération, communauté, éditeurs, technique), et le format des niveaux du jeu |
 
 ## 1. Le jeu : `/home/david/poc/sonicGamePhp`
 
@@ -70,7 +70,10 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
   joueur), en natif par HTTP vers `SONIC_SITE_URL` (publics seulement). Un niveau peut avoir ses masques de
   collision (`masks`, `Level::applyMask`), ses blocs animés (`animations` : `{bloc: {f, t}}`, dessinés à part
   du cache de tiles par `Scene::drawTiles`), sa `zone` (zone du jeu telle quelle : `LevelManager::loadCustom`
-  enregistre les images de la zone, `-cycleK` et `-fg` compris, et reprend CC/CS de son acte 1) et ses sprites (`sprites` : `sprite-<planche>.png` à côté ;
+  enregistre les images de la zone, `-cycleK`, `-lightL-cycleK`, `-water` et `-fg` compris, et reprend CC/CS/TL de son
+  acte 1 ; sinon `cycle` et `tile_variants`, les mêmes images recolorées par le site, écrites `tiles<variante>.png`),
+  `version` et `records` (meilleurs temps ; `record.json.gz` = replay du record, son fantôme ; fantômes du joueur
+  par `site<id>-<version>`, `Game::ghostKey`) et ses sprites (`sprites` : `sprite-<planche>.png` à côté ;
   `LevelManager::useCurrentSprites` les met à la place des planches du jeu pendant le niveau, puis remet
   celles du jeu). Les poses d'attente / ressort de Sonic sont sur la planche `rom`, pas `sonic`.
   Sa musique et ses bruitages (`music.wav`, `sfx-<index>.wav`, clés `custom_music` / `custom_sfx`) :
