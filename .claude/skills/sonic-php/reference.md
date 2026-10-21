@@ -180,6 +180,14 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
   - éditeur de niveau : outils Sélection (V : cadre, Ctrl+D, Suppr, flèches) et Clone (K : clic droit ou
     Alt+clic pour la source, encadrée pendant qu'on peint) ;
   - clone aussi dans les éditeurs de tiles (source dans un autre bloc : Alt+clic sur la liste) et de sprites ;
+  - API publique en lecture seule (README « Comment marche l'API publique ») :
+    - API Platform 5, préfixe `/api/public`, doc Swagger sur `/api/public/docs`, page `/developpeurs` ;
+    - DTO dans `src/ApiResource`, providers dans `src/State/PublicApi` (règle unique :
+      `Creations::canSee(…, null)`) ;
+    - Doctrine d'API Platform désactivé ; firewall `public_api` sans sécurité ; limite et CORS dans
+      `PublicApiSubscriber`.
+    - Les fichiers de Swagger UI (`public/bundles/`, ignoré par git) sont copiés par `assets:install` :
+      `post-install-cmd` dans l'image.
   - serveur MCP pour les IA (README « Comment marche le serveur MCP ») :
     - `/ia` est la doc publique, `/ia/cles` la gestion des clés (`ApiKey`, stockées en SHA-256) ;
     - `POST /mcp` (JSON-RPC) et `/api/v1/{outil}` (REST) passent par les outils de `src/Service/Studio`
