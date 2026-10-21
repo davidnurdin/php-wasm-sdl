@@ -71,6 +71,14 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
   collision (`masks`, `Level::applyMask`) et ses sprites (`sprites` : `sprite-<planche>.png` à côté ;
   `LevelManager::useCurrentSprites` les met à la place des planches du jeu pendant le niveau, puis remet
   celles du jeu). Les poses d'attente / ressort de Sonic sont sur la planche `rom`, pas `sonic`.
+  Sa musique et ses bruitages (`music.wav`, `sfx-<index>.wav`, clés `custom_music` / `custom_sfx`) :
+  `SoundManager::playCustomMusic` / `useCustomSfx`, remis à ceux du jeu en sortant du niveau.
+- Niveaux du site en multijoueur : ZONE va jusqu'à NIVEAU DU SITE (`Versus::SITE_LEVEL` = 36,
+  `ZONE_CHOICES`) ; Entrée ouvre la liste (`Screens::pickSiteLevel`), le choix `{id, lt, name}` va dans
+  `Options::versusSite` (`validSite`). `Game::downloadSiteLevel($site, $purpose)` : `play`, `pick`, `versus`
+  (LANCER le télécharge si `LevelManager::getCustomId()` diffère), `online` / `prefetch`. En ligne, l'hôte
+  met `site` dans le ROSTER et le START ; les autres le préchargent dans le salon ou attendent avant
+  `startVersus`. Pas de replay pour le niveau 36. `Online::VERSION` = 5 (égal à `OnlineStats::VERSION` du site).
 - Mode `SONIC_OBJECT_ICONS` (chemin d'un JSON) : dessine chaque objet du niveau dans une case sur magenta,
   pour `sonicGameSite/tools/object-icons.py` (les images des objets de l'éditeur de niveau).
 - Test natif d'un replay : `var/` appartient à root sur le PC (start.sh passe par sudo) ; pour un script de
@@ -157,7 +165,12 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
     `SpriteSet::SHEETS`, PNG de la taille de celle du jeu (vérifiée par l'en-tête, il n'y a pas GD) ;
     planches de départ `public/img/sheets/` (`tools/sprite-sheets.py <jeu>`) ;
   - sons (`SoundController`) : `/son/{id}` (+ `/editer`), musiques et bruitages (`SoundData`), joués par
-    `public/js/sound-engine.js` ; pas dans le jeu.
+    `public/js/sound-engine.js`. À l'enregistrement, l'éditeur envoie aussi le rendu WAV (mono 16 bits
+    22050 Hz, table `sound_audio`) ; un niveau prend une musique (`musicSound`) et des bruitages (`sfx`
+    `{index du jeu: id}`), envoyés en base64 dans `jeu.json` (`music_wav`, `sfx_wav`) ;
+  - éditeur de niveau : outils Sélection (V : cadre, Ctrl+D, Suppr, flèches) et Clone (K : clic droit ou
+    Alt+clic pour la source, encadrée pendant qu'on peint) ; les salons montrent le nom d'un niveau du
+    site choisi par l'hôte (`site` dans les infos du salon) ;
     Après un test : `delete from user` efface aussi niveaux, tiles, sprites et sons des comptes (pas les zones) ;
   - `/langue/{fr|en}?back=/chemin` : cookie `lang` (sinon `Accept-Language`, `LocaleSubscriber`) ;
   - `/inscription`, `/connexion`, `/deconnexion`, `/editeur`, `/presence`.
