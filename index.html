@@ -311,6 +311,7 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 		await nextFrame();
 
 		await window.SonicSite.loadReplay(FS);
+		await window.SonicSite.loadLevel(FS);
 
 		window.run = () => {
 			// SONIC_FRAME_INTERVAL : une image de jeu à chaque requestAnimationFrame (100 au plus par seconde :
@@ -335,7 +336,9 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				+ `define('SONIC_RETURN', ${window.SonicSite.back ? 'true' : 'false'});\n`
 				+ `define('SONIC_SITE_URL', ${phpString(window.SonicSite.origin)});\n`
 				// "Revoir" on the site (?replay=ID): the replay, fetched before (SonicSite.loadReplay)
-				+ `define('SONIC_REPLAY', ${phpString(window.SonicSite.replayFile)});\n`;
+				+ `define('SONIC_REPLAY', ${phpString(window.SonicSite.replayFile)});\n`
+				// JOUER on a level of the site's editor (?level=ID&lt=key): fetched before (SonicSite.loadLevel)
+				+ `define('SONIC_CUSTOM_LEVEL', ${phpString(window.SonicSite.levelFile)});\n`;
 			ccall("phpw_run", "void", ["string"], [prelude + document.getElementById('php').value]);
 		};
 		try {
@@ -522,6 +525,29 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 			back,
 			origin: back ? new URL(back).origin : '',
 			replayFile: '',
+			levelFile: '',
+			// ?level=ID&lt=key: the level of the site's editor and its tiles (LevelManager::loadCustom of the game)
+			async loadLevel(FS) {
+				const id = params.get('level') || '';
+				const key = params.get('lt') || '';
+				if (!/^\d{1,10}$/.test(id) || !/^[0-9a-f]{0,64}$/.test(key)) return;
+				const site = SITES.includes(params.get('site')) ? params.get('site') : (back ? new URL(back).origin : SITES[0]);
+				try {
+					// a second try: a network error here would start the game on its title instead
+					const url = `${site}/niveau/${id}/jeu.json?lt=${key}`;
+					const response = await fetch(url).catch(() => fetch(url, {cache: 'no-store'}));
+					if (!response.ok) return;
+					const data = await response.json();
+					const tiles = Uint8Array.from(atob(data.tiles), (c) => c.charCodeAt(0));
+					delete data.tiles;
+					FS.mkdirTree('/src/src/var/custom');
+					FS.writeFile('/src/src/var/custom/tiles.png', tiles);
+					FS.writeFile('/src/src/var/custom/level.json', JSON.stringify(data));
+					this.levelFile = '/src/src/var/custom/level.json';
+				} catch (e) {
+					console.warn('[level]', e);
+				}
+			},
 			// ?replay=ID ("Revoir" on the site): the file of the game, before PHP starts
 			async loadReplay(FS) {
 				const id = params.get('replay') || '';
