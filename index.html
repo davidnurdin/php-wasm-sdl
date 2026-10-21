@@ -333,6 +333,9 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				+ `define('SONIC_ROOM', ${phpString(window.SonicSite.room)});\n`
 				+ `define('SONIC_MODE', ${phpString(params.get('mode'))});\n`
 				+ `define('SONIC_LEVEL', ${Number.parseInt(params.get('level'), 10) || 0});\n`
+				// with level 36: the level of the site's editor chosen in the room (&sl=id&slt=key&sln=name)
+				+ `define('SONIC_SITE_LEVEL', ${phpString(JSON.stringify({ id: Number.parseInt(params.get('sl'), 10) || 0,
+					lt: params.get('slt') || '', name: params.get('sln') || '' }))});\n`
 				+ `define('SONIC_RETURN', ${window.SonicSite.back ? 'true' : 'false'});\n`
 				+ `define('SONIC_SITE_URL', ${phpString(window.SonicSite.origin)});\n`
 				// "Revoir" on the site (?replay=ID): the replay, fetched before (SonicSite.loadReplay)
@@ -592,6 +595,8 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 			levelFile: '',
 			// ?level=ID&lt=key: the level of the site's editor and its tiles (LevelManager::loadCustom of the game)
 			async loadLevel(FS) {
+				// a room: ?level= is its zone, not a level of the site
+				if (this.room) return;
 				const id = params.get('level') || '';
 				const key = params.get('lt') || '';
 				const site = SITES.includes(params.get('site')) ? params.get('site') : (back ? new URL(back).origin : SITES[0]);
