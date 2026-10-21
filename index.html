@@ -496,6 +496,48 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 			fetch(site + '/api/jeu', { method: 'POST', body, headers: { 'Content-Type': 'text/plain' }, keepalive: true }).catch(() => {});
 		};
 
+		// a level of the site's editor and its tiles, where the game reads them (LevelManager::loadCustom)
+		const LEVEL_FILE = '/src/src/var/custom/level.json';
+		const downloadLevel = async (FS, site, id, key) => {
+			id = String(id);
+			key = String(key || '');
+			if (!/^\d{1,10}$/.test(id) || !/^[0-9a-f]{0,64}$/.test(key)) return false;
+			try {
+				// a second try: a network error here would start the game on its title instead
+				const url = `${site}/niveau/${id}/jeu.json?lt=${key}`;
+				const response = await fetch(url).catch(() => fetch(url, { cache: 'no-store' }));
+				if (!response.ok) return false;
+				const data = await response.json();
+				const tiles = Uint8Array.from(atob(data.tiles), (c) => c.charCodeAt(0));
+				delete data.tiles;
+				FS.mkdirTree('/src/src/var/custom');
+				FS.writeFile('/src/src/var/custom/tiles.png', tiles);
+				FS.writeFile(LEVEL_FILE, JSON.stringify(data));
+				return true;
+			} catch (e) {
+				console.warn('[level]', e);
+				return false;
+			}
+		};
+		// the site the game's menu NIVEAUX DU SITE reads: the one that opened the game, or the player's account's
+		const levelSite = () => SITES.includes(params.get('site')) ? params.get('site')
+			: (store.get('sonicStatsSite') || (back ? new URL(back).origin : SITES[0]));
+		// the answers to the game (SiteLevels.php): written as a whole, read when they are there
+		const answer = (file, data) => {
+			try { fs.writeFile(file + '.part', JSON.stringify(data)); fs.rename(file + '.part', file); } catch (e) {}
+		};
+		const listLevels = (req) => {
+			const body = JSON.stringify({ st: store.get('sonicStatsToken') || '', page: Math.max(1, Number(req.page) || 1) });
+			fetch(levelSite() + '/api/niveaux', { method: 'POST', body, headers: { 'Content-Type': 'text/plain' } })
+				.then((r) => r.ok ? r.json() : Promise.reject(new Error(String(r.status))))
+				.then((data) => answer('/tmp/sonic-levels.json', data))
+				.catch(() => answer('/tmp/sonic-levels.json', { error: true }));
+		};
+		const getLevel = (req) => {
+			downloadLevel(fs, levelSite(), req.id, req.lt)
+				.then((ok) => answer('/tmp/sonic-level.json', ok ? { ok: true, file: LEVEL_FILE } : { ok: false }));
+		};
+
 		const goBack = () => {
 			sendStats(true);
 			Promise.resolve(window.saveUserFiles && window.saveUserFiles()).finally(() => { location.href = back || SITES[0]; });
@@ -516,6 +558,8 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				else if (req.t === 'back') goBack();
 				else if (req.t === 'open') openSite(req);
 				else if (req.t === 'replay') sendReplay(req);
+				else if (req.t === 'levels') listLevels(req);
+				else if (req.t === 'level') getLevel(req);
 			}
 		};
 
@@ -530,23 +574,8 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 			async loadLevel(FS) {
 				const id = params.get('level') || '';
 				const key = params.get('lt') || '';
-				if (!/^\d{1,10}$/.test(id) || !/^[0-9a-f]{0,64}$/.test(key)) return;
 				const site = SITES.includes(params.get('site')) ? params.get('site') : (back ? new URL(back).origin : SITES[0]);
-				try {
-					// a second try: a network error here would start the game on its title instead
-					const url = `${site}/niveau/${id}/jeu.json?lt=${key}`;
-					const response = await fetch(url).catch(() => fetch(url, {cache: 'no-store'}));
-					if (!response.ok) return;
-					const data = await response.json();
-					const tiles = Uint8Array.from(atob(data.tiles), (c) => c.charCodeAt(0));
-					delete data.tiles;
-					FS.mkdirTree('/src/src/var/custom');
-					FS.writeFile('/src/src/var/custom/tiles.png', tiles);
-					FS.writeFile('/src/src/var/custom/level.json', JSON.stringify(data));
-					this.levelFile = '/src/src/var/custom/level.json';
-				} catch (e) {
-					console.warn('[level]', e);
-				}
+				if (await downloadLevel(FS, site, id, key)) this.levelFile = LEVEL_FILE;
 			},
 			// ?replay=ID ("Revoir" on the site): the file of the game, before PHP starts
 			async loadReplay(FS) {
