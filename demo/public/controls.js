@@ -135,6 +135,12 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 	font: bold 12px ui-monospace, Menlo, Consolas, monospace; touch-action: none;
 }
 #sc-top button.sc-pressed { background: rgba(255, 216, 0, .85); color: #000; }
+/* the site, as a watermark next to DEBUG: faint, but readable over the game */
+#sc-top .sc-site {
+	align-self: center; padding: 0 4px; pointer-events: none; user-select: none; white-space: nowrap;
+	color: rgba(255, 255, 255, .7); text-shadow: 0 1px 2px rgba(0, 0, 0, .8);
+	font: bold 12px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .04em;
+}
 `;
 	const style = document.createElement('style');
 	style.textContent = css;
@@ -203,7 +209,8 @@ html.is-mobile #sc-debug:not(.sc-open) { display: none; }
 	const topBar = document.createElement('div');
 	topBar.id = 'sc-top';
 	topBar.className = 'sm-keep';
-	topBar.innerHTML = '<button class="sc-esc">ESC</button><button id="sc-debug-toggle">DEBUG</button>';
+	topBar.innerHTML = '<button class="sc-esc">ESC</button><button id="sc-debug-toggle">DEBUG</button>'
+		+ '<span class="sc-site" aria-hidden="true">sonic.mimichat.fr</span>';
 	const escBtn = topBar.querySelector('.sc-esc');
 	escBtn.addEventListener('pointerdown', (e) => {
 		e.preventDefault();
