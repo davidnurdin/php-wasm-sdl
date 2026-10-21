@@ -180,6 +180,21 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
   - éditeur de niveau : outils Sélection (V : cadre, Ctrl+D, Suppr, flèches) et Clone (K : clic droit ou
     Alt+clic pour la source, encadrée pendant qu'on peint) ;
   - clone aussi dans les éditeurs de tiles (source dans un autre bloc : Alt+clic sur la liste) et de sprites ;
+  - serveur MCP pour les IA (README « Comment marche le serveur MCP ») :
+    - `/ia` est la doc publique, `/ia/cles` la gestion des clés (`ApiKey`, stockées en SHA-256) ;
+    - `POST /mcp` (JSON-RPC) et `/api/v1/{outil}` (REST) passent par les outils de `src/Service/Studio`
+      (`ToolRegistry`) ;
+    - l'authentification est le firewall `api` (sans état, clé Bearer).
+    - Test local (clé dans un fichier, appels avec python ou curl) :
+      1. créer un compte de test par `/inscription` ;
+      2. créer la clé par la page ;
+      3. faire les appels ;
+      4. effacer le compte (ses niveaux d'abord).
+    - Jouer en natif un niveau du site :
+      1. télécharger `/niveau/{id}/jeu.json` ;
+      2. le découper comme `downloadLevel` d'`index.html` : `tiles.png`, `sprite-*.png`, `music.wav`,
+         `sfx-N.wav`, `level.json` ;
+      3. lancer le jeu avec `-d auto_prepend_file=` qui fait `define('SONIC_CUSTOM_LEVEL', '.../level.json')`.
   - forks, travail à plusieurs, historique (`Creations`, `CreationController`, README « Comment marchent les
     forks… ») : `forked_from_id` sur les 4 sortes ; `creation_member` (le créateur ajoute des joueurs par leur
     nom ; ils éditent, sans supprimer) ; `revision` : chaque action, ce qui a changé (clés de traduction +
