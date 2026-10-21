@@ -508,10 +508,19 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				const response = await fetch(url).catch(() => fetch(url, { cache: 'no-store' }));
 				if (!response.ok) return false;
 				const data = await response.json();
-				const tiles = Uint8Array.from(atob(data.tiles), (c) => c.charCodeAt(0));
+				const bytes = (base64) => Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+				const tiles = bytes(data.tiles);
 				delete data.tiles;
 				FS.mkdirTree('/src/src/var/custom');
 				FS.writeFile('/src/src/var/custom/tiles.png', tiles);
+				// its own sprites (LevelManager::loadCustom): sprite-<sheet>.png, and their names in the level
+				const sprites = [];
+				for (const [sheet, png] of Object.entries(data.sprites || {})) {
+					if (!/^[a-z]{1,20}$/.test(sheet) || typeof png !== 'string') continue;
+					FS.writeFile(`/src/src/var/custom/sprite-${sheet}.png`, bytes(png));
+					sprites.push(sheet);
+				}
+				data.sprites = sprites;
 				FS.writeFile(LEVEL_FILE, JSON.stringify(data));
 				return true;
 			} catch (e) {
