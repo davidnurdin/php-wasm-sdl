@@ -78,7 +78,16 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
   `Options::versusSite` (`validSite`). `Game::downloadSiteLevel($site, $purpose)` : `play`, `pick`, `versus`
   (LANCER le télécharge si `LevelManager::getCustomId()` diffère), `online` / `prefetch`. En ligne, l'hôte
   met `site` dans le ROSTER et le START ; les autres le préchargent dans le salon ou attendent avant
-  `startVersus`. Pas de replay pour le niveau 36. `Online::VERSION` = 5 (égal à `OnlineStats::VERSION` du site).
+  `startVersus`. `Online::VERSION` = 5 (égal à `OnlineStats::VERSION` du site).
+  Un salon du site peut choisir un niveau du site : la page passe `?level=36&sl=<id>&slt=<clé>&sln=<nom>`
+  (`SONIC_SITE_LEVEL`) ; dans un salon, `?level=` est la zone, jamais un niveau à télécharger. Les replays d'un
+  niveau 36 gardent `site` {id, lt, name} (`LevelManager::getCustomSite`, la clé vient de `jeu.json`), et
+  « Revoir » le télécharge d'abord. `ReplayPlayer::position` interpole entre deux images (30 par seconde).
+- Les objets d'un niveau ont le bas à `y*32+16` (`GameObject::placeOnSpawn`) : le sol d'un niveau fait à la main
+  doit être à mi-bloc (forme 16), comme dans les zones du jeu. Les anneaux sont des blocs (0x78 vide, 0x79-0x7B).
+- Le pack « Canyon de Cristal » (compte SONIC en prod : tiles, niveau, musique, 3 bruitages, sprites) a été généré
+  par un script Python (blocs dessinés d'après les formes de collision), puis copié de la base locale à la prod
+  par un script SQL (après une sauvegarde `backup/sonic-db.*.sql`).
 - Mode `SONIC_OBJECT_ICONS` (chemin d'un JSON) : dessine chaque objet du niveau dans une case sur magenta,
   pour `sonicGameSite/tools/object-icons.py` (les images des objets de l'éditeur de niveau).
 - Test natif d'un replay : `var/` appartient à root sur le PC (start.sh passe par sudo) ; pour un script de
@@ -169,7 +178,9 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
     22050 Hz, table `sound_audio`) ; un niveau prend une musique (`musicSound`) et des bruitages (`sfx`
     `{index du jeu: id}`), envoyés en base64 dans `jeu.json` (`music_wav`, `sfx_wav`) ;
   - éditeur de niveau : outils Sélection (V : cadre, Ctrl+D, Suppr, flèches) et Clone (K : clic droit ou
-    Alt+clic pour la source, encadrée pendant qu'on peint) ; les salons montrent le nom d'un niveau du
+    Alt+clic pour la source, encadrée pendant qu'on peint) ;
+  - clone aussi dans les éditeurs de tiles (source dans un autre bloc : Alt+clic sur la liste) et de sprites ;
+  - en local, le site vise le relais de prod par défaut : `.env.local` pour un relais local (README) ; les salons montrent le nom d'un niveau du
     site choisi par l'hôte (`site` dans les infos du salon) ;
     Après un test : `delete from user` efface aussi niveaux, tiles, sprites et sons des comptes (pas les zones) ;
   - `/langue/{fr|en}?back=/chemin` : cookie `lang` (sinon `Accept-Language`, `LocaleSubscriber`) ;
