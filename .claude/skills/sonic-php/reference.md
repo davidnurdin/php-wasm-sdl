@@ -68,7 +68,9 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
   (`Utils/SiteLevels.php`) liste et télécharge les niveaux en direct : en wasm par le pont (`{"t":"levels"}`,
   `{"t":"level"}`, réponses dans `/tmp/sonic-levels.json` et `/tmp/sonic-level.json`, avec le compte du
   joueur), en natif par HTTP vers `SONIC_SITE_URL` (publics seulement). Un niveau peut avoir ses masques de
-  collision (`masks`, `Level::applyMask`) et ses sprites (`sprites` : `sprite-<planche>.png` à côté ;
+  collision (`masks`, `Level::applyMask`), ses blocs animés (`animations` : `{bloc: {f, t}}`, dessinés à part
+  du cache de tiles par `Scene::drawTiles`), sa `zone` (zone du jeu telle quelle : `LevelManager::loadCustom`
+  enregistre les images de la zone, `-cycleK` et `-fg` compris, et reprend CC/CS de son acte 1) et ses sprites (`sprites` : `sprite-<planche>.png` à côté ;
   `LevelManager::useCurrentSprites` les met à la place des planches du jeu pendant le niveau, puis remet
   celles du jeu). Les poses d'attente / ressort de Sonic sont sur la planche `rom`, pas `sonic`.
   Sa musique et ses bruitages (`music.wav`, `sfx-<index>.wav`, clés `custom_music` / `custom_sfx`) :
