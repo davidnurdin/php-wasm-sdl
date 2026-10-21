@@ -171,7 +171,9 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
     de 32 px, un octet de collision par bloc, 47 formes) ; les zones du jeu viennent de `data/game/`
     (`tools/game-data.py <jeu>`, puis `app:zones` au démarrage du conteneur). Jouables dans le jeu :
     `/niveau/{id}/jouer`, `/niveau/{id}/jeu.json?lt=` (clé `LevelToken` d'un niveau privé, CORS `*`) et
-    `POST /api/niveaux` (`{st, page}` en `text/plain` : la liste du menu NIVEAUX DU SITE) ;
+    `POST /api/niveaux` (`{st, page, sort}` en `text/plain` : la liste du menu NIVEAUX DU SITE, triée : `top`,
+    `new`, `plays`, `fav`, `mine`, `favourites`, avec les notes) ; `POST /api/niveaux/note` (`{st, id, stars?, fav?}` :
+    la page TON AVIS du jeu, après un niveau de la liste ; pont `{"t":"vote"}` dans la page, `SONIC_STATS_TOKEN` en natif) ;
   - sprites (`SpriteController`) : `/sprites/{id}` (+ `/editer`, `.json`, `/{planche}.png`), planches de
     `SpriteSet::SHEETS`, PNG de la taille de celle du jeu (vérifiée par l'en-tête, il n'y a pas GD) ;
     planches de départ `public/img/sheets/` (`tools/sprite-sheets.py <jeu>`) ;

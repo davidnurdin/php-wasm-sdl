@@ -550,11 +550,20 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 			try { fs.writeFile(file + '.part', JSON.stringify(data)); fs.rename(file + '.part', file); } catch (e) {}
 		};
 		const listLevels = (req) => {
-			const body = JSON.stringify({ st: store.get('sonicStatsToken') || '', page: Math.max(1, Number(req.page) || 1) });
+			const sort = ['top', 'new', 'plays', 'fav', 'mine', 'favourites'].includes(req.sort) ? req.sort : 'top';
+			const body = JSON.stringify({ st: store.get('sonicStatsToken') || '', page: Math.max(1, Number(req.page) || 1), sort });
 			fetch(levelSite() + '/api/niveaux', { method: 'POST', body, headers: { 'Content-Type': 'text/plain' } })
 				.then((r) => r.ok ? r.json() : Promise.reject(new Error(String(r.status))))
 				.then((data) => answer('/tmp/sonic-levels.json', data))
 				.catch(() => answer('/tmp/sonic-levels.json', { error: true }));
+		};
+		// TON AVIS: the stars (1-5) and the favourite the player gives a level, with his account (no answer awaited)
+		const voteLevel = (req) => {
+			const token = store.get('sonicStatsToken');
+			if (!token || !Number.isInteger(req.id)) return;
+			const vote = { st: token, id: req.id, fav: !!req.fav };
+			if (Number.isInteger(req.stars) && req.stars >= 1 && req.stars <= 5) vote.stars = req.stars;
+			fetch(levelSite() + '/api/niveaux/note', { method: 'POST', body: JSON.stringify(vote), headers: { 'Content-Type': 'text/plain' } }).catch(() => {});
 		};
 		const getLevel = (req) => {
 			downloadLevel(fs, levelSite(), req.id, req.lt)
@@ -583,6 +592,7 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				else if (req.t === 'replay') sendReplay(req);
 				else if (req.t === 'levels') listLevels(req);
 				else if (req.t === 'level') getLevel(req);
+				else if (req.t === 'vote') voteLevel(req);
 			}
 		};
 
