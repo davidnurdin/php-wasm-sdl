@@ -180,9 +180,21 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
   - éditeur de niveau : outils Sélection (V : cadre, Ctrl+D, Suppr, flèches) et Clone (K : clic droit ou
     Alt+clic pour la source, encadrée pendant qu'on peint) ;
   - clone aussi dans les éditeurs de tiles (source dans un autre bloc : Alt+clic sur la liste) et de sprites ;
+  - forks, travail à plusieurs, historique (`Creations`, `CreationController`, README « Comment marchent les
+    forks… ») : `forked_from_id` sur les 4 sortes ; `creation_member` (le créateur ajoute des joueurs par leur
+    nom ; ils éditent, sans supprimer) ; `revision` : chaque action, ce qui a changé (clés de traduction +
+    paramètres) et, pour une version, tout le contenu (JSON gzip). Version d'un éditeur = id de la dernière
+    révision de contenu ; enregistrement avec `version` dépassée → 409 (sauf `force`) ; `?version=` rouvre une
+    ancienne version (`restored`). `editor-live.js` interroge `/api/edition/{sorte}/{id}` toutes les 5 s
+    (cache.app, pas Mercure : le cookie Mercure sert à la présence). `app:history` (entrypoint) : première
+    version des créations d'avant. Profils `/joueur/{nom}`, replays `/historique?joueur=`. Le fork d'un son
+    copie aussi son `sound_audio` ;
+  - le jeu montre « NOM / PAR AUTEUR » pendant 4 s au début d'un niveau du site (`Game::drawSiteCredit`,
+    `author` de `jeu.json`, `LevelManager::getCustomAuthor`) ;
   - en local, le site vise le relais de prod par défaut : `.env.local` pour un relais local (README) ; les salons montrent le nom d'un niveau du
     site choisi par l'hôte (`site` dans les infos du salon) ;
-    Après un test : `delete from user` efface aussi niveaux, tiles, sprites et sons des comptes (pas les zones) ;
+    Après un test : `delete from user` efface aussi niveaux, tiles, sprites et sons des comptes (pas les zones),
+    et les membres ; vider aussi `revision` en local (`delete from revision`) ;
   - `/langue/{fr|en}?back=/chemin` : cookie `lang` (sinon `Accept-Language`, `LocaleSubscriber`) ;
   - `/inscription`, `/connexion`, `/deconnexion`, `/editeur`, `/presence`.
 - `PlayerStats` (table `player_stats`, clé = l'utilisateur, `ON DELETE CASCADE`) : `totals` en JSON, les
@@ -219,7 +231,7 @@ de la ROM. C'est la **version de référence**. Le même code tourne en natif (P
   - `Dockerfile` : FrankenPHP 1 php8.4 alpine, extensions intl, opcache, pdo_mysql, zip ; utilisateur
     `www-data` ; port 8080 ;
   - `docker/Caddyfile` : HTTP seulement, le hub Mercure, cache d'une heure sur css, js et img ;
-  - `docker/entrypoint.sh` : attend la base, joue les migrations, chauffe le cache.
+  - `docker/entrypoint.sh` : attend la base, joue les migrations, `app:zones`, `app:history`, chauffe le cache.
 
 ## 5. La prod : VPS `ssh.mimichat.fr`, `/mimichatPROD/sonicGameServerPhp`
 
