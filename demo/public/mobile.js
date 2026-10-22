@@ -14,7 +14,8 @@
  * html.is-mobile doit donner sa taille au canvas avant que SDL crée sa fenêtre.
  *
  * API : window.SonicMobile = { isMobile, start() }  -> start() est appelé quand le jeu est prêt.
- * Forcer le mode : ?mobile=1 / ?mobile=0 dans l'URL.
+ * Forcer le mode : ?mobile=1 / ?mobile=0 dans l'URL. ?tap=0 : sans écrans « touche pour jouer » / « tourne ton
+ * appareil » (page dans une iframe, ex. régie d'un live).
  */
 (function () {
 	'use strict';
@@ -25,8 +26,10 @@
 	const mobileUA = /Android|iPhone|iPad|iPod|Mobile|Tablet|Silk|Kindle/i.test(navigator.userAgent)
 		|| (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS se dit "Mac"
 	const isMobile = forced !== null ? forced === '1' : touch && (coarse || mobileUA);
+	// ?tap=0 : page intégrée (iframe d'une régie de live) : ni écran « touche pour jouer » ni « tourne ton appareil »
+	const embed = new URLSearchParams(location.search).get('tap') === '0';
 
-	window.SonicMobile = { isMobile, start() {} };
+	window.SonicMobile = { isMobile, embed, start() {} };
 	if (!isMobile) return;
 
 	document.documentElement.classList.add('is-mobile');
@@ -137,10 +140,10 @@ html.is-mobile #canvas {
 	function refresh() {
 		if (!started) return;
 		// plein écran demandé tant qu'on n'y est pas (si l'API existe)
-		const needTap = fsSupported && !fsElement();
+		const needTap = !embed && fsSupported && !fsElement();
 		tapScreen.classList.toggle('sm-visible', needTap);
 		// portrait non verrouillable : on demande de tourner l'appareil
-		rotateScreen.classList.toggle('sm-visible', !needTap && portrait.matches && !orientationLocked && !portraitOk);
+		rotateScreen.classList.toggle('sm-visible', !embed && !needTap && portrait.matches && !orientationLocked && !portraitOk);
 		// SDL (fenêtre RESIZABLE) suit la taille CSS du canvas sur l'événement resize
 		window.dispatchEvent(new Event('resize'));
 	}

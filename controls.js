@@ -69,7 +69,8 @@
 	}
 	const tapKey = (name, ms) => { key(name, true); setTimeout(() => key(name, false), ms); };
 
-	const isMobile = !!(window.SonicMobile && window.SonicMobile.isMobile);
+	// ?tap=0 (page intégrée, cf. mobile.js) : vue mobile mais sans couche tactile ni boutons
+	const isMobile = !!(window.SonicMobile && window.SonicMobile.isMobile && !window.SonicMobile.embed);
 
 	const css = `
 #sc-touch { position: fixed; inset: 0; z-index: 10; touch-action: none; display: none; }
