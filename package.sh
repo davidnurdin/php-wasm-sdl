@@ -75,7 +75,7 @@ cat > "$OUT/version.json" <<JSON
   "php-web.data": "$(hash "$OUT/php-web.data")"
 }
 JSON
-for js in loader.js mobile.js controls.js php-wasm-network.js; do
+for js in loader.js mobile.js volume.js controls.js php-wasm-network.js; do
   sed -i -E "s|src=\"$js(\?v=[0-9a-f]+)?\"|src=\"$js?v=$(hash "$OUT/$js")\"|" "$OUT/index.html"
 done
 cat "$OUT/version.json"
