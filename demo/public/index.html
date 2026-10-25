@@ -592,6 +592,13 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 			if (Number.isInteger(req.stars) && req.stars >= 1 && req.stars <= 5) vote.stars = req.stars;
 			fetch(levelSite() + '/api/niveaux/note', { method: 'POST', body: JSON.stringify(vote), headers: { 'Content-Type': 'text/plain' } }).catch(() => {});
 		};
+		// who plays online (SiteRooms.php): the site's list of the public rooms
+		const listRooms = () => {
+			fetch(levelSite() + '/salons.json')
+				.then((r) => r.ok ? r.json() : Promise.reject(new Error(String(r.status))))
+				.then((data) => answer('/tmp/sonic-rooms.json', data))
+				.catch(() => answer('/tmp/sonic-rooms.json', { error: true }));
+		};
 		const getLevel = (req) => {
 			downloadLevel(fs, levelSite(), req.id, req.lt)
 				.then((ok) => answer('/tmp/sonic-level.json', ok ? { ok: true, file: LEVEL_FILE } : { ok: false }));
@@ -620,6 +627,7 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 				else if (req.t === 'levels') listLevels(req);
 				else if (req.t === 'level') getLevel(req);
 				else if (req.t === 'vote') voteLevel(req);
+				else if (req.t === 'rooms') listRooms();
 			}
 		};
 
