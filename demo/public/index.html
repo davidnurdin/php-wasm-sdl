@@ -244,6 +244,11 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 	}
 
 	async function main() {
+		// playing needs an account of the site: without one, its sign up instead of the game
+		if (!await window.SonicSite.hasAccount()) {
+			window.SonicSite.signUp();
+			return;
+		}
 		// 0-40 % : moteur (.wasm)
 		const L = (fr, en) => window.SonicSite.lang === 'fr' ? fr : en;
 		loader.status(L('Téléchargement du moteur PHP...', 'Downloading the PHP engine...'));
@@ -625,6 +630,49 @@ And here : <a href="https://github.com/davidnurdin/sonicGamePhp/">Sonic game php
 			origin: back ? new URL(back).origin : '',
 			replayFile: '',
 			levelFile: '',
+			// the token of an account (?st= of JOUER), checked with the site (gone: no account). Not needed to
+			// watch a replay ("Revoir"), in a live studio (?tap=0) or on this machine; the site out of reach: played
+			async hasAccount() {
+				if (/^\d{1,10}$/.test(params.get('replay') || '') || params.get('tap') === '0'
+					|| ['localhost', '127.0.0.1'].includes(location.hostname)) return true;
+				const token = store.get('sonicStatsToken');
+				if (!token) return false;
+				try {
+					const response = await fetch((store.get('sonicStatsSite') || SITES[0]) + '/api/stats', {
+						method: 'POST', body: JSON.stringify({ st: token, d: {} }), headers: { 'Content-Type': 'text/plain' },
+					});
+					if (response.status === 401 || response.status === 403) {
+						store.set('sonicStatsToken', null);
+						return false;
+					}
+				} catch (e) {}
+				return true;
+			},
+			// no account: to the site, where JOUER asks to sign up (or in) and comes back here with it
+			signUp() {
+				const fr = this.lang === 'fr';
+				const site = SITES.includes(params.get('site')) ? params.get('site') : (store.get('sonicStatsSite') || (back ? new URL(back).origin : SITES[0]));
+				const level = params.get('level') || '';
+				const path = this.room ? `/salon/${this.room}` : (/^\d{1,10}$/.test(level) ? `/niveau/${level}/jouer` : '/jouer');
+				const box = document.createElement('div');
+				box.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;'
+					+ 'justify-content:center;gap:18px;padding:16px;box-sizing:border-box;text-align:center;'
+					+ 'background:linear-gradient(#0b3fae,#4fa3ff 70%);color:#fff;font:bold 18px sans-serif';
+				const title = document.createElement('div');
+				title.style.cssText = 'font-size:28px';
+				title.textContent = fr ? 'Inscris-toi pour jouer' : 'Sign up to play';
+				const text = document.createElement('div');
+				text.style.cssText = 'max-width:440px;font-weight:normal';
+				text.textContent = fr ? 'Un compte gratuit sur sonic.mimichat.fr : tes parties, tes replays et tes statistiques sont enregistrés.'
+					: 'A free account on sonic.mimichat.fr: your games, replays and statistics are saved.';
+				const link = document.createElement('a');
+				link.href = site + path;
+				link.textContent = fr ? 'S\'inscrire ou se connecter' : 'Sign up or sign in';
+				link.style.cssText = 'padding:12px 22px;border-radius:8px;background:#ffd800;color:#0b3fae;text-decoration:none';
+				box.append(title, text, link);
+				document.body.appendChild(box);
+				window.SonicLoader.hide();
+			},
 			// ?level=ID&lt=key: the level of the site's editor and its tiles (LevelManager::loadCustom of the game)
 			async loadLevel(FS) {
 				// a room: ?level= is its zone, not a level of the site
