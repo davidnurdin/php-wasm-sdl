@@ -27,7 +27,7 @@ link final (LTO) ~4,5 min. Total ~25 min. Si seul le `configure` change, comptez
 |---|---|
 | `build_tool` | Image `emscripten/emsdk:3.1.35` + outils autotools, bison, re2c… |
 | `libxml` | libxml2 `v2.9.10` compilée en statique avec `emconfigure`/`emmake` (linkée mais l'extension xml n'est pas activée) |
-| `php_src` | Clone de `php-src` branche `PHP-8.3.0`, puis copie des extensions dans `ext/` : `davidnurdin/php-sdl` (fork), `kea/php-sdl-image`, `kea/php-sdl-mixer`, `kea/php-sdl-ttf`. Leurs `config.m4` sont **remplacés** par les `config*.sdl` du repo |
+| `php_src` | Clone de `php-src` branche `PHP-8.3.0`, puis copie des extensions dans `ext/` : `davidnurdin/php-sdl` (fork), `kea/php-sdl-image`, `kea/php-sdl-mixer`, `kea/php-sdl-ttf`, `Ponup/php-opengl` (+ `patches/ext/php-opengl.patch`), `Ponup/php-openal`. Leurs `config.m4` sont **remplacés** par les `config*.sdl` du repo |
 | `php-wasm` | `apt install libsdl2-*-dev` (voir l'astuce plus bas), `buildconf` + `emconfigure ./configure`, `emmake make`, compilation de `source/phpw.c`, link final `emcc` |
 
 ### L'astuce des en-têtes SDL
@@ -53,6 +53,7 @@ SDL_ttf 2.20.2 (+ freetype, harfbuzz 3.2.0), zlib 1.2.13.
 | Extension | Pourquoi |
 |---|---|
 | `sdl`, `sdl_image`, `sdl_mixer`, `sdl_ttf` | Le jeu |
+| `opengl`, `openal` | OpenGL → WebGL 1 (les `gl*` dans le contexte WebGL de SDL), OpenAL → Web Audio (son positionné) |
 | `gd` + `png` | Découpage des images trop larges (voir [fonctionnement.md](fonctionnement.md#images-trop-larges)), `getimagesize` |
 | `zlib` | `gzencode`/`gzdecode` des fantômes (`var/ghosts/*.json.gz`) |
 | `mbstring`, `ctype`, `tokenizer`, `bcmath` | Symfony Console / DI / Yaml |
@@ -69,7 +70,7 @@ tableaux, appels de méthodes) donnait le wasm 7 à 12 fois plus lent que PHP na
 **Vérifier qu'une fonction existe dans le wasm** : avant d'utiliser une nouvelle fonction PHP dans le
 jeu, il faut qu'elle soit dans le moteur. `get_loaded_extensions()` dans le wasm renvoie :
 `Core, date, pcre, zlib, bcmath, ctype, gd, hash, json, mbstring, random, Reflection, SDL, SDL_image,
-SDL_mixer, sdl_ttf, standard, SPL, tokenizer`. Pour en ajouter une, ajoutez l'option dans le
+SDL_mixer, sdl_ttf, OpenGL, openal, standard, SPL, tokenizer, wasmnet`. Pour en ajouter une, ajoutez l'option dans le
 `configure` du Dockerfile et relancez `./build-engine.sh`.
 
 ### Link final (`emcc`)
@@ -87,7 +88,29 @@ Points importants des options :
 | `-sLZ4=1` | Le paquet de données peut être compressé LZ4 |
 | `-sINITIAL_MEMORY=256mb -sALLOW_MEMORY_GROWTH=1 -sMAXIMUM_MEMORY=2gb` | Mémoire |
 | `-sUSE_SDL=2 … -sSDL2_IMAGE_FORMATS=[bmp,png,jpg] -sSDL2_MIXER_FORMATS=[ogg,wav,mp3]` | Ports SDL |
+| `-lGL -lopenal` | WebGL (`library_webgl.js`) et OpenAL sur Web Audio (`library_openal.js`) pour les extensions `opengl` / `openal` |
 | `-sERROR_ON_UNDEFINED_SYMBOLS=0` | Des symboles natifs inutilisés (`makecontext`, `getdtablesize`…) restent non résolus : warnings normaux |
+
+### OpenGL et OpenAL
+
+Les deux extensions viennent de Ponup, épinglées par commit (`PHP_OPENGL_REF`, `PHP_OPENAL_REF`, les mêmes que
+dans JumPHP). `patches/ext/php-opengl.patch` (identique à `docker/ext/php-opengl.patch` de JumPHP) ajoute ce
+qu'un moteur de jeu demande :
+- les framebuffers ;
+- `glGetIntegerv` / `glGetFloatv`, pour sauvegarder et restaurer l'état GL de SDL autour des appels `gl*` ;
+- `glGetActiveUniform` et les uniforms manquants ;
+- `glBufferSubData`, `glReadPixels` et `glCopyTexSubImage2D` ;
+- les tampons et les pixels en chaînes binaires (`pack('g*', ...)`) ;
+- des erreurs de shader non fatales, et les `glDelete*`, qui étaient vides dans l'original.
+
+Sous emscripten, les fonctions de l'OpenGL bureau absentes de WebGL (`glPolygonMode`, `glDrawBuffer`,
+`glPointSize`, `glClearDepth` → `glClearDepthf`…) deviennent des warnings.
+
+Les shaders s'écrivent en GLSL ES 1.00 (`#version 100`, accepté aussi par l'OpenGL du bureau). Les appels `gl*`
+partagent le contexte du renderer 2D de SDL : on vide d'abord sa file (changer de cible de rendu suffit, le
+binding n'a pas `SDL_RenderFlush`), on sauvegarde son état, puis on le restaure. Les cibles de rendu SDL stockent
+leur ligne du haut en premier, et en GLES2 leurs couleurs en BGR. Le code complet (couche 3D, post-traitement,
+son 3D) se trouve dans `engine/src/Gl` et `engine/src/Audio/Audio3d.php` de JumPHP.
 
 Pour déboguer : remplacer `-O3` par `-O0`, retirer `-flto`/`--llvm-lto 2`, ajouter `-g`. **Attention**
 en `-O0` le marqueur d'injection change (c'est alors le commentaire `--pre-js` qui sert, cf. `go.sh`).

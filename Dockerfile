@@ -88,6 +88,20 @@ RUN git clone https://github.com/davidnurdin/php-wasm-network.git /src/php-wasm-
 #	cp -r /src/php-src/ext/parallel/src/* /src/php-src/ext/sdl/ && \
 #    find /src/php-src/ext/sdl/ -type f ! \( -name '*.c' -o -name '*.h' -o -name 'config.m4' \) -delete
 
+# OpenGL (-> WebGL) et OpenAL (-> Web Audio) : PHP-OpenGL / PHP-OpenAL de Ponup, commits épinglés (les mêmes que JumPHP),
+# avec patches/ext/php-opengl.patch : framebuffers, glGetIntegerv, uniforms, chaînes binaires, gardes WebGL
+ARG PHP_OPENGL_REF=438798d5f0a5347a59d13252611556792cc2a1b8
+ARG PHP_OPENAL_REF=6f78e95120ffe2cd30813a78ca66eaedde310314
+COPY patches/ext/php-opengl.patch /tmp/php-opengl.patch
+RUN set -eux; \
+    fetch() { mkdir -p "$3" && cd "$3" && git init -q && git remote add origin "https://github.com/$1.git" \
+              && git fetch -q --depth 1 origin "$2" && git checkout -q FETCH_HEAD; }; \
+    fetch Ponup/php-opengl "$PHP_OPENGL_REF" /src/php-src/ext/opengl; \
+    fetch Ponup/php-openal "$PHP_OPENAL_REF" /src/php-src/ext/openal; \
+    cd /src/php-src/ext/opengl && git apply /tmp/php-opengl.patch
+COPY config-opengl.sdl /src/php-src/ext/opengl/config.m4
+COPY config-openal.sdl /src/php-src/ext/openal/config.m4
+
 COPY config.sdl /src/php-src/ext/sdl/config.m4
 COPY config-image.sdl /src/php-src/ext/sdl_image/config.m4
 COPY config-mixer.sdl /src/php-src/ext/sdl_mixer/config.m4
@@ -167,6 +181,8 @@ RUN --mount=type=cache,target=/emsdk/upstream/emscripten/cache cd /src/php-src &
     	--with-sdl_image \
     	--enable-sdl_ttf \
     	--enable-wasmnet \
+    	--enable-opengl \
+    	--enable-openal \
     	--with-sdl_mixer \
 #		--with-libxml      \
     	--enable-gd \
@@ -244,7 +260,7 @@ RUN --mount=type=cache,target=/emsdk/upstream/emscripten/cache mkdir /build && c
 	-s EXPORT_ES6=$EXPORT_ES6 \
 	-s EXPORT_NAME=$EXPORT_NAME \
 	# -s DECLARE_ASM_MODULE_EXPORTS=0 \
-	-lidbfs.js                       \
+	-lidbfs.js -lopenal -lGL         \
 	--js-library /src/php-wasm-network/js/library_wasmnet.js \
 		/src/phpw.o .libs/libphp.a /src/usr/lib/libxml2.a
     #/src/usr/lib/sqlite3.o

@@ -1,0 +1,11 @@
+dnl config.m4 for extension opengl (PHP-OpenGL, Ponup + patches/ext/php-opengl.patch), emscripten build:
+dnl the GL headers and library come from emscripten (WebGL through library_webgl.js, linked by -sUSE_SDL=2)
+
+PHP_ARG_ENABLE([opengl],
+  [whether to enable OpenGL support],
+  [AS_HELP_STRING([--enable-opengl], [Enable OpenGL (WebGL) support])],
+  [no])
+
+if test "$PHP_OPENGL" != "no"; then
+  PHP_NEW_EXTENSION(opengl, php_opengl.c php_convert.c, $ext_shared,, -Wno-unused-function)
+fi

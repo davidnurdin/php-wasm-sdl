@@ -1,0 +1,787 @@
+diff --git a/jumphp_gl.c b/jumphp_gl.c
+new file mode 100644
+index 0000000..718aa96
+--- /dev/null
++++ b/jumphp_gl.c
+@@ -0,0 +1,470 @@
++/*
++ * JumPHP additions to PHP-OpenGL (included by php_opengl.c): what a game engine needs on top of the
++ * original functions, all of them in OpenGL ES 2 / WebGL 1 so that the same PHP code runs on the desktop
++ * and in the browser (emscripten): framebuffers, state queries, the other uniform setters, partial buffer
++ * updates, pixels as binary strings, shader / program status without fatal errors.
++ */
++
++#define JUMPHP_GEN(fn, glfn) \
++PHP_FUNCTION(fn) { \
++    zend_long n; zval *z_out; GLuint *ids; \
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "lz/", &n, &z_out) == FAILURE) { RETURN_THROWS(); } \
++    if (n <= 0) { RETURN_FALSE; } \
++    ids = (GLuint*) emalloc(sizeof(GLuint) * n); \
++    glfn((GLsizei) n, ids); \
++    convert_gluint_array_to_zval(ids, n, z_out); \
++    efree(ids); \
++    RETURN_TRUE; \
++}
++
++#define JUMPHP_DELETE(fn, glfn) \
++PHP_FUNCTION(fn) { \
++    zend_long n; zval *z_ids; GLuint *ids; \
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "la", &n, &z_ids) == FAILURE) { RETURN_THROWS(); } \
++    if (n <= 0 || zend_hash_num_elements(Z_ARRVAL_P(z_ids)) < (uint32_t) n) { RETURN_FALSE; } \
++    ids = php_array_to_uint_array(z_ids); \
++    glfn((GLsizei) n, ids); \
++    efree(ids); \
++    RETURN_TRUE; \
++}
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_jumphp_gen, 0, 0, 2)
++ZEND_ARG_INFO(0, n)
++ZEND_ARG_INFO(1, ids)
++ZEND_END_ARG_INFO()
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_jumphp_delete, 0, 0, 2)
++ZEND_ARG_INFO(0, n)
++ZEND_ARG_INFO(0, ids)
++ZEND_END_ARG_INFO()
++
++JUMPHP_GEN(glGenFramebuffers, glGenFramebuffers)
++JUMPHP_GEN(glGenRenderbuffers, glGenRenderbuffers)
++JUMPHP_DELETE(glDeleteFramebuffers, glDeleteFramebuffers)
++JUMPHP_DELETE(glDeleteRenderbuffers, glDeleteRenderbuffers)
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_jumphp_target_id, 0, 0, 2)
++ZEND_ARG_INFO(0, target)
++ZEND_ARG_INFO(0, id)
++ZEND_END_ARG_INFO()
++
++PHP_FUNCTION(glBindFramebuffer) {
++    zend_long target, id;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &target, &id) == FAILURE) { RETURN_THROWS(); }
++    glBindFramebuffer((GLenum) target, (GLuint) id);
++}
++
++PHP_FUNCTION(glBindRenderbuffer) {
++    zend_long target, id;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &target, &id) == FAILURE) { RETURN_THROWS(); }
++    glBindRenderbuffer((GLenum) target, (GLuint) id);
++}
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_glFramebufferTexture2D, 0, 0, 5)
++ZEND_ARG_INFO(0, target)
++ZEND_ARG_INFO(0, attachment)
++ZEND_ARG_INFO(0, textarget)
++ZEND_ARG_INFO(0, texture)
++ZEND_ARG_INFO(0, level)
++ZEND_END_ARG_INFO()
++
++PHP_FUNCTION(glFramebufferTexture2D) {
++    zend_long target, attachment, textarget, texture, level;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "lllll", &target, &attachment, &textarget, &texture, &level) == FAILURE) { RETURN_THROWS(); }
++    glFramebufferTexture2D((GLenum) target, (GLenum) attachment, (GLenum) textarget, (GLuint) texture, (GLint) level);
++}
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_glRenderbufferStorage, 0, 0, 4)
++ZEND_ARG_INFO(0, target)
++ZEND_ARG_INFO(0, internalformat)
++ZEND_ARG_INFO(0, width)
++ZEND_ARG_INFO(0, height)
++ZEND_END_ARG_INFO()
++
++PHP_FUNCTION(glRenderbufferStorage) {
++    zend_long target, format, width, height;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll", &target, &format, &width, &height) == FAILURE) { RETURN_THROWS(); }
++    glRenderbufferStorage((GLenum) target, (GLenum) format, (GLsizei) width, (GLsizei) height);
++}
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_glFramebufferRenderbuffer, 0, 0, 4)
++ZEND_ARG_INFO(0, target)
++ZEND_ARG_INFO(0, attachment)
++ZEND_ARG_INFO(0, renderbuffertarget)
++ZEND_ARG_INFO(0, renderbuffer)
++ZEND_END_ARG_INFO()
++
++PHP_FUNCTION(glFramebufferRenderbuffer) {
++    zend_long target, attachment, rbtarget, rb;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll", &target, &attachment, &rbtarget, &rb) == FAILURE) { RETURN_THROWS(); }
++    glFramebufferRenderbuffer((GLenum) target, (GLenum) attachment, (GLenum) rbtarget, (GLuint) rb);
++}
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_jumphp_one, 0, 0, 1)
++ZEND_ARG_INFO(0, value)
++ZEND_END_ARG_INFO()
++
++PHP_FUNCTION(glCheckFramebufferStatus) {
++    zend_long target;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &target) == FAILURE) { RETURN_THROWS(); }
++    RETURN_LONG((zend_long) glCheckFramebufferStatus((GLenum) target));
++}
++
++/* how many values a glGet* returns */
++static int jumphp_get_count(GLenum pname) {
++    switch (pname) {
++        case GL_VIEWPORT: case GL_SCISSOR_BOX: case GL_COLOR_CLEAR_VALUE: case GL_COLOR_WRITEMASK:
++        case GL_BLEND_COLOR:
++            return 4;
++        case GL_DEPTH_RANGE: case GL_ALIASED_LINE_WIDTH_RANGE: case GL_ALIASED_POINT_SIZE_RANGE:
++        case GL_MAX_VIEWPORT_DIMS:
++            return 2;
++        default:
++            return 1;
++    }
++}
++
++/* int|int[] glGetIntegerv(int pname): the value (or the values: viewport, scissor box...) */
++PHP_FUNCTION(glGetIntegerv) {
++    zend_long pname;
++    GLint values[16] = {0};
++    int i, n;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &pname) == FAILURE) { RETURN_THROWS(); }
++    glGetIntegerv((GLenum) pname, values);
++    n = jumphp_get_count((GLenum) pname);
++    if (n == 1) { RETURN_LONG((zend_long) values[0]); }
++    array_init(return_value);
++    for (i = 0; i < n; i++) { add_next_index_long(return_value, (zend_long) values[i]); }
++}
++
++/* float|float[] glGetFloatv(int pname) */
++PHP_FUNCTION(glGetFloatv) {
++    zend_long pname;
++    GLfloat values[16] = {0};
++    int i, n;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &pname) == FAILURE) { RETURN_THROWS(); }
++    glGetFloatv((GLenum) pname, values);
++    n = jumphp_get_count((GLenum) pname);
++    if (n == 1) { RETURN_DOUBLE((double) values[0]); }
++    array_init(return_value);
++    for (i = 0; i < n; i++) { add_next_index_double(return_value, (double) values[i]); }
++}
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_jumphp_object_pname, 0, 0, 2)
++ZEND_ARG_INFO(0, object)
++ZEND_ARG_INFO(0, pname)
++ZEND_END_ARG_INFO()
++
++PHP_FUNCTION(glGetShaderiv) {
++    zend_long shader, pname;
++    GLint value = 0;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &shader, &pname) == FAILURE) { RETURN_THROWS(); }
++    glGetShaderiv((GLuint) shader, (GLenum) pname, &value);
++    RETURN_LONG((zend_long) value);
++}
++
++PHP_FUNCTION(glGetProgramiv) {
++    zend_long program, pname;
++    GLint value = 0;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &program, &pname) == FAILURE) { RETURN_THROWS(); }
++    glGetProgramiv((GLuint) program, (GLenum) pname, &value);
++    RETURN_LONG((zend_long) value);
++}
++
++PHP_FUNCTION(glGetShaderInfoLog) {
++    zend_long shader;
++    GLint length = 0;
++    GLsizei written = 0;
++    char *log;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &shader) == FAILURE) { RETURN_THROWS(); }
++    glGetShaderiv((GLuint) shader, GL_INFO_LOG_LENGTH, &length);
++    if (length <= 0) { RETURN_EMPTY_STRING(); }
++    log = emalloc(length);
++    glGetShaderInfoLog((GLuint) shader, length, &written, log);
++    RETVAL_STRINGL(log, written);
++    efree(log);
++}
++
++PHP_FUNCTION(glGetProgramInfoLog) {
++    zend_long program;
++    GLint length = 0;
++    GLsizei written = 0;
++    char *log;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &program) == FAILURE) { RETURN_THROWS(); }
++    glGetProgramiv((GLuint) program, GL_INFO_LOG_LENGTH, &length);
++    if (length <= 0) { RETURN_EMPTY_STRING(); }
++    log = emalloc(length);
++    glGetProgramInfoLog((GLuint) program, length, &written, log);
++    RETVAL_STRINGL(log, written);
++    efree(log);
++}
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_glBindAttribLocation, 0, 0, 3)
++ZEND_ARG_INFO(0, program)
++ZEND_ARG_INFO(0, index)
++ZEND_ARG_INFO(0, name)
++ZEND_END_ARG_INFO()
++
++PHP_FUNCTION(glBindAttribLocation) {
++    zend_long program, index;
++    char *name;
++    size_t name_len;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "lls", &program, &index, &name, &name_len) == FAILURE) { RETURN_THROWS(); }
++    glBindAttribLocation((GLuint) program, (GLuint) index, name);
++}
++
++/* uniforms: the setters the original extension does not have */
++ZEND_BEGIN_ARG_INFO_EX(arginfo_jumphp_uniform, 0, 0, 2)
++ZEND_ARG_INFO(0, location)
++ZEND_ARG_VARIADIC_INFO(0, values)
++ZEND_END_ARG_INFO()
++
++PHP_FUNCTION(glUniform2f) {
++    zend_long loc; double a, b;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "ldd", &loc, &a, &b) == FAILURE) { RETURN_THROWS(); }
++    glUniform2f((GLint) loc, (GLfloat) a, (GLfloat) b);
++}
++
++PHP_FUNCTION(glUniform4f) {
++    zend_long loc; double a, b, c, d;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "ldddd", &loc, &a, &b, &c, &d) == FAILURE) { RETURN_THROWS(); }
++    glUniform4f((GLint) loc, (GLfloat) a, (GLfloat) b, (GLfloat) c, (GLfloat) d);
++}
++
++PHP_FUNCTION(glUniform2i) {
++    zend_long loc, a, b;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "lll", &loc, &a, &b) == FAILURE) { RETURN_THROWS(); }
++    glUniform2i((GLint) loc, (GLint) a, (GLint) b);
++}
++
++/* glUniform{1,2,3,4}fv(int location, float[] values): count = number of values / size */
++#define JUMPHP_UNIFORM_FV(fn, glfn, size) \
++PHP_FUNCTION(fn) { \
++    zend_long loc; zval *z_values; GLfloat *values; uint32_t n; \
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "la", &loc, &z_values) == FAILURE) { RETURN_THROWS(); } \
++    n = zend_hash_num_elements(Z_ARRVAL_P(z_values)); \
++    if (n < size) { RETURN_FALSE; } \
++    values = php_array_to_float_array(z_values); \
++    glfn((GLint) loc, (GLsizei) (n / size), values); \
++    efree(values); \
++    RETURN_TRUE; \
++}
++
++JUMPHP_UNIFORM_FV(glUniform1fv, glUniform1fv, 1)
++JUMPHP_UNIFORM_FV(glUniform2fv, glUniform2fv, 2)
++JUMPHP_UNIFORM_FV(glUniform3fv, glUniform3fv, 3)
++JUMPHP_UNIFORM_FV(glUniform4fv, glUniform4fv, 4)
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_jumphp_uniform_matrix, 0, 0, 4)
++ZEND_ARG_INFO(0, location)
++ZEND_ARG_INFO(0, count)
++ZEND_ARG_INFO(0, transpose)
++ZEND_ARG_INFO(0, value)
++ZEND_END_ARG_INFO()
++
++PHP_FUNCTION(glUniformMatrix3fv) {
++    zend_long loc, count; zend_bool transpose; zval *z_values; GLfloat *values;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "llba", &loc, &count, &transpose, &z_values) == FAILURE) { RETURN_THROWS(); }
++    values = php_array_to_float_array(z_values);
++    glUniformMatrix3fv((GLint) loc, (GLsizei) count, (GLboolean) transpose, values);
++    efree(values);
++}
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_glBufferSubData, 0, 0, 3)
++ZEND_ARG_INFO(0, target)
++ZEND_ARG_INFO(0, offset)
++ZEND_ARG_INFO(0, data)
++ZEND_END_ARG_INFO()
++
++/* glBufferSubData(int target, int offset bytes, string|float[] data): a binary string (pack('g*', ...)) or floats */
++PHP_FUNCTION(glBufferSubData) {
++    zend_long target, offset;
++    zval *z_data;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "llz", &target, &offset, &z_data) == FAILURE) { RETURN_THROWS(); }
++    if (Z_TYPE_P(z_data) == IS_STRING) {
++        glBufferSubData((GLenum) target, (GLintptr) offset, (GLsizeiptr) Z_STRLEN_P(z_data), Z_STRVAL_P(z_data));
++    } else if (Z_TYPE_P(z_data) == IS_ARRAY) {
++        uint32_t n = zend_hash_num_elements(Z_ARRVAL_P(z_data));
++        GLfloat *values;
++        if (n == 0) { return; }
++        values = php_array_to_float_array(z_data);
++        glBufferSubData((GLenum) target, (GLintptr) offset, (GLsizeiptr) (n * sizeof(GLfloat)), values);
++        efree(values);
++    }
++}
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_jumphp_four, 0, 0, 4)
++ZEND_ARG_INFO(0, a)
++ZEND_ARG_INFO(0, b)
++ZEND_ARG_INFO(0, c)
++ZEND_ARG_INFO(0, d)
++ZEND_END_ARG_INFO()
++
++PHP_FUNCTION(glScissor) {
++    zend_long x, y, w, h;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll", &x, &y, &w, &h) == FAILURE) { RETURN_THROWS(); }
++    glScissor((GLint) x, (GLint) y, (GLsizei) w, (GLsizei) h);
++}
++
++PHP_FUNCTION(glColorMask) {
++    zend_bool r, g, b, a;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "bbbb", &r, &g, &b, &a) == FAILURE) { RETURN_THROWS(); }
++    glColorMask(r, g, b, a);
++}
++
++PHP_FUNCTION(glBlendFuncSeparate) {
++    zend_long a, b, c, d;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll", &a, &b, &c, &d) == FAILURE) { RETURN_THROWS(); }
++    glBlendFuncSeparate((GLenum) a, (GLenum) b, (GLenum) c, (GLenum) d);
++}
++
++PHP_FUNCTION(glBlendEquation) {
++    zend_long mode;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &mode) == FAILURE) { RETURN_THROWS(); }
++    glBlendEquation((GLenum) mode);
++}
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_glReadPixels, 0, 0, 6)
++ZEND_ARG_INFO(0, x)
++ZEND_ARG_INFO(0, y)
++ZEND_ARG_INFO(0, width)
++ZEND_ARG_INFO(0, height)
++ZEND_ARG_INFO(0, format)
++ZEND_ARG_INFO(0, type)
++ZEND_END_ARG_INFO()
++
++/* string glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE): the pixels, bottom row first */
++PHP_FUNCTION(glReadPixels) {
++    zend_long x, y, w, h, format, type;
++    zend_string *out;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "llllll", &x, &y, &w, &h, &format, &type) == FAILURE) { RETURN_THROWS(); }
++    if (w <= 0 || h <= 0 || format != GL_RGBA || type != GL_UNSIGNED_BYTE) {
++        php_error_docref(NULL, E_WARNING, "glReadPixels: only GL_RGBA / GL_UNSIGNED_BYTE, positive sizes");
++        RETURN_FALSE;
++    }
++    out = zend_string_alloc((size_t) (w * h * 4), 0);
++    glPixelStorei(GL_PACK_ALIGNMENT, 1);
++    glReadPixels((GLint) x, (GLint) y, (GLsizei) w, (GLsizei) h, GL_RGBA, GL_UNSIGNED_BYTE, ZSTR_VAL(out));
++    ZSTR_VAL(out)[w * h * 4] = '\0';
++    RETURN_NEW_STR(out);
++}
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_glGetActiveUniform, 0, 0, 2)
++ZEND_ARG_INFO(0, program)
++ZEND_ARG_INFO(0, index)
++ZEND_END_ARG_INFO()
++
++/* array|false glGetActiveUniform(int program, int index): ['name' => ..., 'type' => GL_FLOAT_VEC3..., 'size' => n] */
++PHP_FUNCTION(glGetActiveUniform) {
++    zend_long program, index;
++    char name[256];
++    GLsizei length = 0;
++    GLint size = 0;
++    GLenum type = 0;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &program, &index) == FAILURE) { RETURN_THROWS(); }
++    glGetActiveUniform((GLuint) program, (GLuint) index, sizeof(name), &length, &size, &type, name);
++    if (length <= 0) { RETURN_FALSE; }
++    array_init(return_value);
++    add_assoc_stringl(return_value, "name", name, length);
++    add_assoc_long(return_value, "type", (zend_long) type);
++    add_assoc_long(return_value, "size", (zend_long) size);
++}
++
++ZEND_BEGIN_ARG_INFO_EX(arginfo_glCopyTexSubImage2D, 0, 0, 8)
++ZEND_ARG_INFO(0, target)
++ZEND_ARG_INFO(0, level)
++ZEND_ARG_INFO(0, xoffset)
++ZEND_ARG_INFO(0, yoffset)
++ZEND_ARG_INFO(0, x)
++ZEND_ARG_INFO(0, y)
++ZEND_ARG_INFO(0, width)
++ZEND_ARG_INFO(0, height)
++ZEND_END_ARG_INFO()
++
++PHP_FUNCTION(glCopyTexSubImage2D) {
++    zend_long target, level, xo, yo, x, y, w, h;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "llllllll", &target, &level, &xo, &yo, &x, &y, &w, &h) == FAILURE) { RETURN_THROWS(); }
++    glCopyTexSubImage2D((GLenum) target, (GLint) level, (GLint) xo, (GLint) yo, (GLint) x, (GLint) y, (GLsizei) w, (GLsizei) h);
++}
++
++PHP_FUNCTION(glUniform3i) {
++    zend_long loc, a, b, c;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll", &loc, &a, &b, &c) == FAILURE) { RETURN_THROWS(); }
++    glUniform3i((GLint) loc, (GLint) a, (GLint) b, (GLint) c);
++}
++
++PHP_FUNCTION(glUniform4i) {
++    zend_long loc, a, b, c, d;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "lllll", &loc, &a, &b, &c, &d) == FAILURE) { RETURN_THROWS(); }
++    glUniform4i((GLint) loc, (GLint) a, (GLint) b, (GLint) c, (GLint) d);
++}
++
++/* pixels given to glTexImage2D / glTexSubImage2D: null (allocate only), a binary string, or the original int array */
++static GLvoid *jumphp_pixels(zval *pixels, zend_bool *allocated) {
++    *allocated = 0;
++    if (pixels == NULL || Z_TYPE_P(pixels) == IS_NULL) {
++        return NULL;
++    }
++    if (Z_TYPE_P(pixels) == IS_STRING) {
++        return Z_STRVAL_P(pixels);
++    }
++    convert_to_array(pixels);
++    *allocated = 1;
++    return php_array_to_int_array(pixels);
++}
++
++#define JUMPHP_FUNCTIONS \
++    ZEND_FE(glGenFramebuffers, arginfo_jumphp_gen) \
++    ZEND_FE(glGenRenderbuffers, arginfo_jumphp_gen) \
++    ZEND_FE(glDeleteFramebuffers, arginfo_jumphp_delete) \
++    ZEND_FE(glDeleteRenderbuffers, arginfo_jumphp_delete) \
++    ZEND_FE(glBindFramebuffer, arginfo_jumphp_target_id) \
++    ZEND_FE(glBindRenderbuffer, arginfo_jumphp_target_id) \
++    ZEND_FE(glFramebufferTexture2D, arginfo_glFramebufferTexture2D) \
++    ZEND_FE(glRenderbufferStorage, arginfo_glRenderbufferStorage) \
++    ZEND_FE(glFramebufferRenderbuffer, arginfo_glFramebufferRenderbuffer) \
++    ZEND_FE(glCheckFramebufferStatus, arginfo_jumphp_one) \
++    ZEND_FE(glGetIntegerv, arginfo_jumphp_one) \
++    ZEND_FE(glGetFloatv, arginfo_jumphp_one) \
++    ZEND_FE(glGetShaderiv, arginfo_jumphp_object_pname) \
++    ZEND_FE(glGetProgramiv, arginfo_jumphp_object_pname) \
++    ZEND_FE(glGetShaderInfoLog, arginfo_jumphp_one) \
++    ZEND_FE(glGetProgramInfoLog, arginfo_jumphp_one) \
++    ZEND_FE(glBindAttribLocation, arginfo_glBindAttribLocation) \
++    ZEND_FE(glUniform2f, arginfo_jumphp_uniform) \
++    ZEND_FE(glUniform4f, arginfo_jumphp_uniform) \
++    ZEND_FE(glUniform2i, arginfo_jumphp_uniform) \
++    ZEND_FE(glUniform1fv, arginfo_jumphp_uniform) \
++    ZEND_FE(glUniform2fv, arginfo_jumphp_uniform) \
++    ZEND_FE(glUniform3fv, arginfo_jumphp_uniform) \
++    ZEND_FE(glUniform4fv, arginfo_jumphp_uniform) \
++    ZEND_FE(glUniformMatrix3fv, arginfo_jumphp_uniform_matrix) \
++    ZEND_FE(glBufferSubData, arginfo_glBufferSubData) \
++    ZEND_FE(glScissor, arginfo_jumphp_four) \
++    ZEND_FE(glColorMask, arginfo_jumphp_four) \
++    ZEND_FE(glBlendFuncSeparate, arginfo_jumphp_four) \
++    ZEND_FE(glBlendEquation, arginfo_jumphp_one) \
++    ZEND_FE(glReadPixels, arginfo_glReadPixels) \
++    ZEND_FE(glGetActiveUniform, arginfo_glGetActiveUniform) \
++    ZEND_FE(glCopyTexSubImage2D, arginfo_glCopyTexSubImage2D) \
++    ZEND_FE(glUniform3i, arginfo_jumphp_uniform) \
++    ZEND_FE(glUniform4i, arginfo_jumphp_uniform)
++
++/* constants used by the additions that the original does not register */
++static void jumphp_register_constants(int module_number) {
++#define JC(name) REGISTER_LONG_CONSTANT(#name, name, CONST_CS | CONST_PERSISTENT)
++    JC(GL_FRAMEBUFFER); JC(GL_RENDERBUFFER); JC(GL_COLOR_ATTACHMENT0); JC(GL_DEPTH_ATTACHMENT);
++    JC(GL_STENCIL_ATTACHMENT); JC(GL_DEPTH_COMPONENT16); JC(GL_FRAMEBUFFER_COMPLETE);
++    JC(GL_FRAMEBUFFER_BINDING); JC(GL_RENDERBUFFER_BINDING); JC(GL_CURRENT_PROGRAM);
++    JC(GL_ARRAY_BUFFER_BINDING); JC(GL_ELEMENT_ARRAY_BUFFER_BINDING);
++    JC(GL_ACTIVE_TEXTURE);
++    JC(GL_BLEND_SRC_RGB); JC(GL_BLEND_DST_RGB); JC(GL_BLEND_SRC_ALPHA);
++    JC(GL_BLEND_DST_ALPHA); JC(GL_BLEND_EQUATION_RGB); JC(GL_FUNC_ADD); JC(GL_FUNC_SUBTRACT);
++    JC(GL_COMPILE_STATUS); JC(GL_LINK_STATUS); JC(GL_INFO_LOG_LENGTH);
++   
++    JC(GL_VERTEX_ARRAY_BINDING); JC(GL_ACTIVE_UNIFORMS); JC(GL_DYNAMIC_DRAW); JC(GL_STREAM_DRAW);
++    JC(GL_FLOAT_VEC2); JC(GL_FLOAT_VEC3); JC(GL_FLOAT_VEC4); JC(GL_FLOAT_MAT2); JC(GL_FLOAT_MAT3); JC(GL_FLOAT_MAT4);
++    JC(GL_INT_VEC2); JC(GL_INT_VEC3); JC(GL_INT_VEC4); JC(GL_BOOL); JC(GL_BOOL_VEC2); JC(GL_BOOL_VEC3);
++    JC(GL_BOOL_VEC4); JC(GL_SAMPLER_2D); JC(GL_SAMPLER_CUBE);
++#undef JC
++}
+diff --git a/php_opengl.c b/php_opengl.c
+index a21d918..8c73010 100644
+--- a/php_opengl.c
++++ b/php_opengl.c
+@@ -32,6 +32,7 @@
+ #include "opengl.h"
+ 
+ PHP_MSHUTDOWN_FUNCTION(opengl);
++static GLvoid *jumphp_pixels(zval *pixels, zend_bool *allocated); /* jumphp_gl.c */
+ 	
+ void convert_gluint_array_to_zval(GLuint* array, GLsizei n, zval* val) {
+     GLsizei i;
+@@ -142,9 +143,17 @@ PHP_FUNCTION(glbufferdata) {
+     void* data;
+     zend_array *param_ht;
+     int tmp_size;
+-    if (zend_parse_parameters(ZEND_NUM_ARGS(), "llal", &target, &size, &z_data, &usage) == FAILURE) {
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "llzl", &target, &size, &z_data, &usage) == FAILURE) {
+         WRONG_PARAM_COUNT;
+     }
++    if (Z_TYPE_P(z_data) == IS_STRING || Z_TYPE_P(z_data) == IS_NULL) {
++        glBufferData((GLenum) target, (GLsizeiptr) size, Z_TYPE_P(z_data) == IS_STRING ? Z_STRVAL_P(z_data) : NULL, (GLenum) usage);
++        return;
++    }
++    if (Z_TYPE_P(z_data) != IS_ARRAY) {
++        zend_error(E_WARNING, "glBufferData: data must be an array, a binary string or null");
++        return;
++    }
+ 
+     param_ht = HASH_OF(z_data);
+     tmp_size = zend_hash_num_elements(param_ht);
+@@ -169,6 +178,19 @@ ZEND_ARG_INFO(0, arrays)
+ ZEND_END_ARG_INFO()
+ 
+ PHP_FUNCTION(glDeleteVertexArrays) {
++    zend_long n;
++    zval *z_ids;
++    GLuint *ids;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "la", &n, &z_ids) == FAILURE) {
++        RETURN_THROWS();
++    }
++    if (n <= 0 || zend_hash_num_elements(Z_ARRVAL_P(z_ids)) < (uint32_t) n) {
++        RETURN_FALSE;
++    }
++    ids = php_array_to_uint_array(z_ids);
++    glDeleteVertexArrays((GLsizei) n, ids);
++    efree(ids);
++    RETURN_TRUE;
+ }
+ 
+ ZEND_BEGIN_ARG_INFO_EX(arginfo_glDeleteBuffers, 0, 0, 2)
+@@ -177,6 +199,19 @@ ZEND_ARG_INFO(0, buffers)
+ ZEND_END_ARG_INFO()
+ 
+ PHP_FUNCTION(glDeleteBuffers) {
++    zend_long n;
++    zval *z_ids;
++    GLuint *ids;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "la", &n, &z_ids) == FAILURE) {
++        RETURN_THROWS();
++    }
++    if (n <= 0 || zend_hash_num_elements(Z_ARRVAL_P(z_ids)) < (uint32_t) n) {
++        RETURN_FALSE;
++    }
++    ids = php_array_to_uint_array(z_ids);
++    glDeleteBuffers((GLsizei) n, ids);
++    efree(ids);
++    RETURN_TRUE;
+ }
+ 
+ ZEND_BEGIN_ARG_INFO_EX(arginfo_glDeleteShader, 0, 0, 1)
+@@ -184,6 +219,11 @@ ZEND_ARG_INFO(0, shader)
+ ZEND_END_ARG_INFO()
+ 
+ PHP_FUNCTION(glDeleteShader) {
++    zend_long id;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &id) == FAILURE) {
++        RETURN_THROWS();
++    }
++    glDeleteShader((GLuint) id);
+ }
+ 
+ ZEND_BEGIN_ARG_INFO_EX(arginfo_glDeleteProgram, 0, 0, 1)
+@@ -191,6 +231,11 @@ ZEND_ARG_INFO(0, program)
+ ZEND_END_ARG_INFO()
+ 
+ PHP_FUNCTION(glDeleteProgram) {
++    zend_long id;
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &id) == FAILURE) {
++        RETURN_THROWS();
++    }
++    glDeleteProgram((GLuint) id);
+ }
+ 
+ ZEND_BEGIN_ARG_INFO_EX(arginfo_glshadersource, 0, 0, 4)
+@@ -240,7 +285,7 @@ PHP_FUNCTION(glcompileshader) {
+             memset(error_msg, 0, sizeof (GLchar) * maxLength);
+             glGetShaderInfoLog((GLuint) shader, maxLength, &error_msg_len, error_msg);
+ 
+-            zend_error(E_ERROR, "%s", error_msg);
++            php_error_docref(NULL, E_WARNING, "%s", error_msg);
+ 
+             efree(error_msg);
+         } else {
+@@ -248,7 +293,9 @@ PHP_FUNCTION(glcompileshader) {
+         }
+ 
+         glDeleteShader(shader); // Don't leak the shader.
++        RETURN_FALSE;
+     }
++    RETURN_TRUE;
+ }
+ 
+ ZEND_BEGIN_ARG_INFO_EX(arginfo_glattachshader, 0, 0, 2)
+@@ -281,7 +328,11 @@ PHP_FUNCTION(glbindfragdatalocation) {
+         WRONG_PARAM_COUNT;
+     }
+ 
++#ifdef __EMSCRIPTEN__
++    php_error_docref(NULL, E_WARNING, "%s: not in WebGL", "glBindFragDataLocation");
++#else
+     glBindFragDataLocation(program, program_number, name);
++#endif
+ }
+ 
+ ZEND_BEGIN_ARG_INFO_EX(arginfo_gllinkprogram, 0, 0, 1)
+@@ -305,9 +356,12 @@ PHP_FUNCTION(gllinkprogram) {
+         if (maxLength > 0) {
+             char *pLinkInfoLog = (char*) emalloc(sizeof (char)*maxLength);
+             glGetProgramInfoLog(program, maxLength, &maxLength, pLinkInfoLog);
+-            zend_error(E_ERROR, "%s", pLinkInfoLog);
++            php_error_docref(NULL, E_WARNING, "%s", pLinkInfoLog);
++            efree(pLinkInfoLog);
+         }
++        RETURN_FALSE;
+     }
++    RETURN_TRUE;
+ }
+ 
+ ZEND_BEGIN_ARG_INFO_EX(arginfo_gluseprogram, 0, 0, 1)
+@@ -467,7 +521,11 @@ PHP_FUNCTION(glcleardepth) {
+     if (zend_parse_parameters(ZEND_NUM_ARGS(), "d", &depth) == FAILURE) {
+         WRONG_PARAM_COUNT;
+     }
++#ifdef __EMSCRIPTEN__
++    glClearDepthf(depth);
++#else
+     glClearDepth(depth);
++#endif
+ }
+ /* }}} */
+ 
+@@ -500,7 +558,11 @@ PHP_FUNCTION(glcopytexsubimage1d) {
+     if (zend_parse_parameters(ZEND_NUM_ARGS(), "llllll", &target, &level, &xoffset, &x, &y, &width) == FAILURE) {
+         WRONG_PARAM_COUNT;
+     }
++#ifdef __EMSCRIPTEN__
++    php_error_docref(NULL, E_WARNING, "%s: not in WebGL", "glCopyTexSubImage1D");
++#else
+     glCopyTexSubImage1D((int) target, (int) level, (int) xoffset, (int) x, (int) y, (int) width);
++#endif
+ }
+ /* }}} */
+ 
+@@ -577,7 +639,11 @@ PHP_FUNCTION(gldepthrange) {
+     if (zend_parse_parameters(ZEND_NUM_ARGS(), "dd", &zNear, &zFar) == FAILURE) {
+         WRONG_PARAM_COUNT;
+     }
++#ifdef __EMSCRIPTEN__
++    glDepthRangef(zNear, zFar);
++#else
+     glDepthRange(zNear, zFar);
++#endif
+ }
+ /* }}} */
+ 
+@@ -621,7 +687,11 @@ PHP_FUNCTION(gldrawbuffer) {
+     if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &mode) == FAILURE) {
+         WRONG_PARAM_COUNT;
+     }
++#ifdef __EMSCRIPTEN__
++    php_error_docref(NULL, E_WARNING, "%s: not in WebGL", "glDrawBuffer");
++#else
+     glDrawBuffer((int) mode);
++#endif
+ }
+ 
+ /* }}} */
+@@ -787,7 +857,11 @@ PHP_FUNCTION(glgetteximage) {
+     }
+     convert_to_array(pixels);
+     v_pixels = php_array_to_long_array(pixels);
++#ifdef __EMSCRIPTEN__
++    php_error_docref(NULL, E_WARNING, "%s: not in WebGL", "glGetTexImage");
++#else
+     glGetTexImage((int) target, (int) level, (int) format, (int) type, v_pixels);
++#endif
+     efree(v_pixels);
+ }
+ /* }}} */
+@@ -864,7 +938,11 @@ PHP_FUNCTION(gllogicop) {
+     if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &opcode) == FAILURE) {
+         WRONG_PARAM_COUNT;
+     }
++#ifdef __EMSCRIPTEN__
++    php_error_docref(NULL, E_WARNING, "%s: not in WebGL", "glLogicOp");
++#else
+     glLogicOp((int) opcode);
++#endif
+ }
+ /* }}} */
+ 
+@@ -880,7 +958,11 @@ PHP_FUNCTION(glpixelstoref) {
+     if (zend_parse_parameters(ZEND_NUM_ARGS(), "ld", &pname, &param) == FAILURE) {
+         WRONG_PARAM_COUNT;
+     }
++#ifdef __EMSCRIPTEN__
++    php_error_docref(NULL, E_WARNING, "%s: not in WebGL", "glPixelStoref");
++#else
+     glPixelStoref((int) (pname), (float) (param));
++#endif
+ }
+ /* }}} */
+ 
+@@ -909,7 +991,11 @@ PHP_FUNCTION(glpointsize) {
+     if (zend_parse_parameters(ZEND_NUM_ARGS(), "d", &size) == FAILURE) {
+         WRONG_PARAM_COUNT;
+     }
++#ifdef __EMSCRIPTEN__
++    php_error_docref(NULL, E_WARNING, "%s: not in WebGL", "glPointSize (set gl_PointSize in the vertex shader)");
++#else
+     glPointSize((float) size);
++#endif
+ }
+ /* }}} */
+ 
+@@ -925,7 +1011,11 @@ PHP_FUNCTION(glpolygonmode) {
+         WRONG_PARAM_COUNT;
+     }
+ 
++#ifdef __EMSCRIPTEN__
++    php_error_docref(NULL, E_WARNING, "%s: not in WebGL", "glPolygonMode");
++#else
+     glPolygonMode((int) (face), (int) (mode));
++#endif
+ }
+ /* }}} */
+ 
+@@ -955,7 +1045,11 @@ PHP_FUNCTION(glreadbuffer) {
+     if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &mode) == FAILURE) {
+         WRONG_PARAM_COUNT;
+     }
++#ifdef __EMSCRIPTEN__
++    php_error_docref(NULL, E_WARNING, "%s: not in WebGL", "glReadBuffer");
++#else
+     glReadBuffer((int) mode);
++#endif
+ }
+ /* }}} */
+ 
+@@ -990,13 +1084,13 @@ PHP_FUNCTION(glteximage2d) {
+     zend_long target, level, internal_format, width, height, border, format, type;
+     zval *pixels;
+     GLvoid *v_pixels;
+-    if (zend_parse_parameters(ZEND_NUM_ARGS(), "llllllllz", &target, &level, &internal_format, &width, &height, &border, &format, &type, &pixels) == FAILURE) {
++    if (zend_parse_parameters(ZEND_NUM_ARGS(), "llllllllz!", &target, &level, &internal_format, &width, &height, &border, &format, &type, &pixels) == FAILURE) {
+         WRONG_PARAM_COUNT;
+     }
+-    convert_to_array(pixels);
+-    v_pixels = php_array_to_int_array(pixels);
++    zend_bool allocated;
++    v_pixels = jumphp_pixels(pixels, &allocated);
+     glTexImage2D((GLenum) target, (GLint) level, (GLint) internal_format, (GLsizei) width, (GLsizei) height, (GLint) border, (GLenum) format, (GLenum) type, v_pixels);
+-    efree(v_pixels);
++    if (allocated) efree(v_pixels);
+ }
+ /* }}} */
+ 
+@@ -1036,10 +1130,10 @@ PHP_FUNCTION(gltexsubimage2d) {
+     if (zend_parse_parameters(ZEND_NUM_ARGS(), "llllllllz", &target, &level, &xoffset, &yoffset, &width, &height, &format, &type, &pixels) == FAILURE) {
+         WRONG_PARAM_COUNT;
+     }
+-    convert_to_array(pixels);
+-    v_pixels = php_array_to_long_array(pixels);
++    zend_bool allocated;
++    v_pixels = jumphp_pixels(pixels, &allocated);
+     glTexSubImage2D((int) (target), (int) (level), (int) (xoffset), (int) (yoffset), (int) (width), (int) (height), (int) (format), (int) (type), v_pixels);
+-    efree(v_pixels);
++    if (allocated) efree(v_pixels);
+ }
+ /* }}} */
+ 
+@@ -1198,7 +1292,10 @@ PHP_FUNCTION(glActiveTexture) {
+     glActiveTexture((GLenum) texture);
+ }
+ 
++#include "jumphp_gl.c"
++
+ const zend_function_entry opengl_functions[] = {
++    JUMPHP_FUNCTIONS
+     ZEND_FE(glbindtexture, arginfo_glbindtexture)
+     ZEND_FE(glblendfunc, arginfo_glblendfunc)
+     ZEND_FE(glclear, arginfo_glclear)
+@@ -1299,6 +1396,7 @@ PHP_MSHUTDOWN_FUNCTION(opengl) {
+ }
+ 
+ PHP_MINIT_FUNCTION(opengl) {
++    jumphp_register_constants(module_number);
+     REGISTER_LONG_CONSTANT("GL_NEVER", GL_NEVER, CONST_CS | CONST_PERSISTENT);
+     REGISTER_LONG_CONSTANT("GL_LESS", GL_LESS, CONST_CS | CONST_PERSISTENT);
+     REGISTER_LONG_CONSTANT("GL_EQUAL", GL_EQUAL, CONST_CS | CONST_PERSISTENT);
